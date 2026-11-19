@@ -50,7 +50,7 @@ fn api_reply(
     workbench.revision += 1
     return json_reply(
       "200 OK",
-      report.to_json(),
+      Json(report),
       scan_revision=workbench.revision_token(),
     )
   }
@@ -74,7 +74,7 @@ fn api_reply(
         }
       }
       guard has_current(session) else { return scan_first() }
-      json_reply("200 OK", session.preview(id).to_json()) catch {
+      json_reply("200 OK", Json(session.preview(id))) catch {
         @scan.UnknownEvidence =>
           error_reply("404 Not Found", "Evidence is not in the current scan.")
         @scan.LimitExceeded(_) =>

@@ -187,7 +187,7 @@ async test "loopback HTTP protects and reviews one scan session" {
       ] {
       ignore(post("scan", invalid, "400", browser))
     }
-    assert_eq(session.report().to_json().stringify(), scoped)
+    assert_eq(Json(session.report()).stringify(), scoped)
     let second_revision = scan_revision(second_headers)
     assert_true(first_revision != second_revision)
     let second = browser + "\{SCAN_REVISION_HEADER}: \{second_revision}\r\n"

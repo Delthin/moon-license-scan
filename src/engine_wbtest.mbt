@@ -67,7 +67,7 @@ async test "UTF-16 scanning, saved report and verified preview agree" {
   for endianness in [@utf16.Little, @utf16.Big] {
     let raw = @utf16.encode(text[:], bom=true, endianness~)
     @test_fs.write_binary(path, raw)
-    let report = parse_report(scanner.scan(path).to_json().stringify())
+    let report = parse_report(Json(scanner.scan(path)).stringify())
     guard report.files is [{ sha256: Some(digest), findings: [hit], .. }] else {
       fail("expected a canonical declaration in the UTF-16 input")
     }
