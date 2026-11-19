@@ -12,21 +12,23 @@
 
 ### 使用预编译包
 
-从 [GitHub Actions「Native builds」](https://github.com/Delthin/moon-license-scan/actions/workflows/native.yml) 打开一次成功运行，下载对应平台的产物：`moon-license-scan-macos-arm64`、`moon-license-scan-linux-x64` 或 `moon-license-scan-windows-x64`。用附带的 `.sha256` 文件校验 `.tar.gz`，解压后将其中的 `bin/` 加入 `PATH`，或在解压目录直接运行。用 `--version` 确认安装的是 1.0.0：
+从 [GitHub Release v1.0.0](https://github.com/Delthin/moon-license-scan/releases/tag/v1.0.0) 下载对应平台的 `.tar.gz`：`moon-license-scan-macos-arm64`、`moon-license-scan-linux-x64` 或 `moon-license-scan-windows-x64`。用同页的 `SHA256SUMS` 校验归档，解压后将其中的 `bin/` 加入 `PATH`，或在解压目录直接运行：
 
 ```sh
 # macOS / Linux
+./bin/moon-license-scan --version
 ./bin/moon-license-scan scan examples/release-after
 ```
 
 ```powershell
 # Windows PowerShell
+.\bin\moon-license-scan.exe --version
 .\bin\moon-license-scan.exe scan examples/release-after
 ```
 
 ### 从源码运行
 
-源码构建需要 [MoonBit](https://www.moonbitlang.com/download/)（CI 使用 `0.10.20+65efd5b93`）和平台 C 工具链。在仓库根目录运行：
+源码构建需要 [MoonBit](https://www.moonbitlang.com/download/)（CI 使用 `0.10.21+06da1ed44`）和平台 C 工具链。在仓库根目录运行：
 
 ```sh
 moon update
@@ -75,7 +77,7 @@ HTTP 客户端使用命令打印的地址，以 `application/json` 发送 POST �
 
 ## MoonBit SDK
 
-从同一个 [Actions 工作流](https://github.com/Delthin/moon-license-scan/actions/workflows/native.yml) 下载 `moon-license-scan-sdk`，将源码 ZIP 解压到调用项目旁边。按解包后的模块版本在项目的 `moon.mod` 中声明依赖（例如 `import { "Delthin/moon_license_scan@1.0.0" }`）。在共同的上一级目录运行 `moon work init my-app moon-license-sdk`，其中两个参数替换成实际目录名；然后在调用包的 `moon.pkg` 中导入 `"Delthin/moon_license_scan" @scan`，并用 `--target native` 构建。
+从 [GitHub Release v1.0.0](https://github.com/Delthin/moon-license-scan/releases/tag/v1.0.0) 下载 `Delthin-moon_license_scan-1.0.0.zip`，将源码 ZIP 解压到调用项目旁边。按解包后的模块版本在项目的 `moon.mod` 中声明依赖（例如 `import { "Delthin/moon_license_scan@1.0.0" }`）。在共同的上一级目录运行 `moon work init my-app moon-license-sdk`，其中两个参数替换成实际目录名；然后在调用包的 `moon.pkg` 中导入 `"Delthin/moon_license_scan" @scan`，并用 `--target native` 构建。
 
 ```moonbit
 fn scan_release(root : String) -> @scan.Report raise {

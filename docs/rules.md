@@ -25,7 +25,7 @@ GNU 条款正文与项目采用声明分别记录。例如，标准 GPL v2 正�
 
 ## 来源与复现
 
-[规则清单](../rule-sources/selection.tsv)逐条记录规则 ID、SPDX 表达式、上游文件、原文行范围、完整上游文件的 SHA-256 和选段理由。上游路径以 [ScanCode Toolkit v32.5.0 的许可证与规则目录](https://github.com/aboutcode-org/scancode-toolkit/tree/abd87fb81609ea4a29ab4cdda755c188b8be3601/src/licensedcode/data)为基准。[生成器](../rule-sources/generate.mbtx)核对摘要和行范围，并拒绝规整后词序完全相同的规则。
+[规则清单](../rule-sources/selection.tsv)逐条记录规则 ID、SPDX 表达式、上游文件、原文行范围、完整上游文件的 SHA-256 和选段理由。上游路径以 [ScanCode Toolkit v32.5.0 的许可证与规则目录](https://github.com/aboutcode-org/scancode-toolkit/tree/abd87fb81609ea4a29ab4cdda755c188b8be3601/src/licensedcode/data)为基准。[生成器](https://github.com/Delthin/moon-license-scan/blob/v1.0.0/rule-sources/generate.mbtx)核对摘要和行范围，并拒绝规整后词序完全相同的规则。
 
 将 `SCANCODE_CHECKOUT` 指向该提交的本地源码目录，然后在 Moon License Scan 源码根目录运行：
 
@@ -35,4 +35,4 @@ moon run --target native rule-sources/generate.mbtx -- "$SCANCODE_CHECKOUT" rule
   diff -u src/rules/corpus.mbt "$generated"
 ```
 
-更新选段时，应核对差异，再更新[内置语料](../src/rules/corpus.mbt)和[语料版本](../src/rules/rules.mbt)。软件代码使用 [Apache-2.0](../LICENSE)，改编的 ScanCode 规则数据使用 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/legalcode)，归属及改动说明见 [NOTICE](../NOTICE)。
+更新选段时，应核对差异，再更新[内置语料](https://github.com/Delthin/moon-license-scan/blob/v1.0.0/src/rules/corpus.mbt)和[语料版本](https://github.com/Delthin/moon-license-scan/blob/v1.0.0/src/rules/rules.mbt)。软件代码使用 [Apache-2.0](../LICENSE)，改编的 ScanCode 规则数据使用 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/legalcode)，归属及改动说明见 [NOTICE](../NOTICE)。
