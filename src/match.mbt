@@ -1,7 +1,7 @@
 ///|
 struct CompiledRule {
   source : @rules.RuleSource
-  words : Array[String]
+  words : Array[StringView]
   anchor : Int32
 }
 
@@ -20,13 +20,13 @@ priv struct Match {
 /// Reuse a scanner for repeated local scans without recompiling the corpus.
 pub struct Scanner {
   priv rules : Array[CompiledRule]
-  priv index : Map[String, Map[String, Array[Int32]]]
+  priv index : Map[StringView, Map[StringView, Array[Int32]]]
 }
 
 ///|
 pub fn Scanner::new() -> Scanner {
   let rules = []
-  let index : Map[String, Map[String, Array[Int32]]] = Map([])
+  let index : Map[StringView, Map[StringView, Array[Int32]]] = Map([])
   for n, source in @rules.corpus() {
     let sequence = words(source.pattern).map(word => word.value)
     let anchor = source.anchor
@@ -110,6 +110,38 @@ fn Scanner::body_matches(
 }
 
 ///|
+// GNU license appendices show a grant with an unfilled copyright holder.
+// Ignore only the adjacent grant; a later real grant in the same file remains evidence.
+fn suppress_gnu_examples(text : String, candidates : Array[Match]) -> Array[Match] {
+  fn gnu_grant(hit : Match) -> Bool {
+    hit.kind == "fragment" && (
+      hit.expression.has_prefix("GPL-") || hit.expression.has_prefix("LGPL-") ||
+      hit.expression.has_prefix("AGPL-")
+    )
+  }
+  if !text.contains("<year>") || !candidates.any(gnu_grant) {
+    return candidates
+  }
+  let template_lines : Set[Int32] = Set([])
+  each_line(text, (line, raw) => {
+    if raw.contains("<year>") &&
+      (raw.contains("<name of author>") || raw.contains("<name of copyright holder>")) {
+      template_lines.add(line)
+    }
+  })
+  candidates.filter(hit => {
+    if gnu_grant(hit) {
+      for offset in 1..<=4 {
+        if template_lines.contains(hit.start_line - offset) {
+          return false
+        }
+      }
+    }
+    true
+  })
+}
+
+///|
 fn consolidate(candidates : Array[Match]) -> (Array[Match], Bool) {
   candidates.sort_by((a, b) => {
     if a.start_word != b.start_word {
@@ -181,12 +213,8 @@ fn Scanner::find(
 ) -> (Array[Finding], Array[String], Bool) {
   let input = words(text)
   let (found, body_complete) = self.body_matches(input)
-  let (matched, ambiguous) = consolidate(found)
-  let (explicit, invalid, explicit_complete) = spdx_labels(text)
-  let review : Array[String] = []
-  if invalid {
-    review.push("invalid_spdx_label")
-  }
+  let (matched, ambiguous) = consolidate(suppress_gnu_examples(text, found))
+  let (explicit, review, explicit_complete) = spdx_labels(text)
   if ambiguous {
     review.push("ambiguous_rule_match")
   }
@@ -223,7 +251,7 @@ fn Scanner::find(
       if i != hit.start_word {
         content.write_char(' ')
       }
-      content.write_string(input[i].value)
+      content.write_stringview(input[i].value)
     }
     add(hit, hash_text(content.to_string()))
   }

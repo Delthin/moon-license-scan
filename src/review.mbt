@@ -111,7 +111,7 @@ fn validate_report(report : Report) -> Unit raise ScanError {
             if file.bytes != report.options.max_file_bytes + 1 {
               raise InvalidInput("invalid file limit record")
             }
-          "total_byte_limit" | "binary" | "invalid_utf8" => ()
+          "total_byte_limit" | "binary" | "invalid_utf8" | "invalid_utf16" | "unsupported_encoding" => ()
           _ => raise InvalidInput("invalid skipped file reason")
         }
       }
@@ -524,7 +524,7 @@ fn Scanner::notice_at(
   boundary : @local.Root,
   current : Report,
 ) -> Json raise {
-  if current.rules_version != @rules.version() {
+  if current.rules_version != rules_version() {
     raise StaleEvidence
   }
   validate_report(current)

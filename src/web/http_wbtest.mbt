@@ -1,5 +1,9 @@
 ///|
-async fn exchange(addr : @socket.Addr, raw : String, status : String) -> String {
+async fn exchange_response(
+  addr : @socket.Addr,
+  raw : String,
+  status : String,
+) -> (String, String) {
   @async.with_timeout(3000, () => {
     let conn = @socket.Tcp::connect(addr)
     defer conn.close()
@@ -14,8 +18,26 @@ async fn exchange(addr : @socket.Addr, raw : String, status : String) -> String 
     assert_true(headers.contains("X-Content-Type-Options: nosniff"))
     assert_true(headers.contains("frame-ancestors 'none'"))
     assert_false(headers.contains("Access-Control-Allow-Origin"))
-    reply[split + 4:].to_owned()
+    (headers.to_owned(), reply[split + 4:].to_owned())
   })
+}
+
+///|
+async fn exchange(addr : @socket.Addr, raw : String, status : String) -> String {
+  let (_, body) = exchange_response(addr, raw, status)
+  body
+}
+
+///|
+fn scan_revision(headers : String) -> String raise {
+  for line in headers.split("\r\n") {
+    if line.split_once(": ") is Some((name, value)) &&
+      name == SCAN_REVISION_HEADER &&
+      !value.is_empty() {
+      return value.to_owned()
+    }
+  }
+  fail("missing scan revision")
 }
 
 ///|
@@ -55,8 +77,8 @@ async test "loopback HTTP protects and reviews one scan session" {
     let foreign = "0".repeat(64)
     let preview_body = "{\"id\":\"\{foreign}\"}"
     let post = (path : String, body : String, status : String, extra : String) => {
-      let prefix = "POST /api/\{path} HTTP/1.1\r\nHost: \{host}\r\nContent-Type: application/json\r\nContent-Length: \{body.length()}\r\n"
-      exchange(addr, prefix + extra + "\r\n" + body, status)
+      let prefix = "POST /api/\{path} HTTP/1.1\r\nHost: \{host}\r\nContent-Type: application/json\r\nContent-Length: \{@utf8.encode(body[:]).length()}\r\n"
+      exchange_response(addr, prefix + extra + "\r\n" + body, status)
     }
     ignore(post("preview", preview_body, "409", ""))
     ignore(
@@ -86,13 +108,15 @@ async test "loopback HTTP protects and reviews one scan session" {
     ignore(post("notice", " ".repeat(1025), "413", ""))
     ignore(post("scan", "{\"root\":\"untrusted\"}", "400", ""))
     let browser = "Origin: http://\{host}\r\nSec-Fetch-Site: same-origin\r\n"
-    let report = post("scan", "{}", "200", browser)
+    let (first_headers, report) = post("scan", "{}", "200", browser)
+    let first_revision = scan_revision(first_headers)
+    let first = browser + "\{SCAN_REVISION_HEADER}: \{first_revision}\r\n"
     guard @json.parse(report[:])
       is { "files": [{ "findings": [{ "id": String(id), .. }], .. }], .. } else {
       fail("expected one finding in the authorized directory")
     }
     let imported = report.replace_all(old=id, new=foreign)
-    let comparison = post(
+    let (_, comparison) = post(
       "compare",
       "{\"previous\":" + imported + "}",
       "200",
@@ -110,13 +134,14 @@ async test "loopback HTTP protects and reviews one scan session" {
         browser,
       ),
     )
-    let preview = post("preview", "{\"id\":\"\{id}\"}", "200", browser)
+    let valid_preview = "{\"id\":\"\{id}\"}"
+    let (_, preview) = post("preview", valid_preview, "200", first)
     guard @json.parse(preview[:])
       is { "path": "license.txt", "text": String(text), .. } else {
       fail("expected source evidence from the current scan")
     }
     assert_true(text.contains("SPDX-License-Identifier: MIT"))
-    let notice = post("notice", "{}", "200", browser)
+    let (_, notice) = post("notice", "{}", "200", first)
     assert_true(
       @json.parse(notice[:])
       is { "entries": [], "review": [{ "path": "license.txt", .. }], .. },
@@ -132,7 +157,7 @@ async test "loopback HTTP protects and reviews one scan session" {
       "max_entries": 100,
       "max_findings": 2,
     }
-    let scoped = post(
+    let (second_headers, scoped) = post(
       "scan",
       " ".repeat(1025) + Json({ "options": options }).stringify(),
       "200",
@@ -163,6 +188,38 @@ async test "loopback HTTP protects and reviews one scan session" {
       ignore(post("scan", invalid, "400", browser))
     }
     assert_eq(session.report().to_json().stringify(), scoped)
-    ignore(post("preview", "{\"id\":\"\{id}\"}", "200", browser))
+    let second_revision = scan_revision(second_headers)
+    assert_true(first_revision != second_revision)
+    let second = browser + "\{SCAN_REVISION_HEADER}: \{second_revision}\r\n"
+    let valid_compare = "{\"previous\":" + report + "}"
+    for
+      (operation, body) in [
+        ("preview", valid_preview),
+        ("notice", "{}"),
+        ("compare", valid_compare),
+      ] {
+      let (_, stale) = post(operation, body, "409", first)
+      assert_true(stale.contains("The current scan has changed"))
+      ignore(post(operation, body, "200", second))
+      ignore(post(operation, body, "200", browser))
+    }
   })
+}
+
+///|
+test "HTTP response limit counts UTF-8 bytes" {
+  let prefix = "界".repeat(REPORT_LIMIT / 3)
+  let response : Response = {
+    status: "200 OK",
+    content_type: "application/json",
+    body: prefix + "a",
+    scan_revision: Some("test-revision"),
+  }
+  let (accepted, bytes) = encode_response(response)
+  assert_eq(accepted.status, "200 OK")
+  assert_eq(bytes.length(), REPORT_LIMIT)
+  let (rejected, bytes) = encode_response({ ..response, body: prefix + "aa", })
+  assert_eq(rejected.status, "413 Content Too Large")
+  assert_eq(rejected.scan_revision, None)
+  assert_true(bytes.length() < 1024)
 }

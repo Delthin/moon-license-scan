@@ -177,10 +177,12 @@ fn bounded(
   high : Int32,
 ) -> Int32 raise InvalidArguments {
   guard args.get(key) is Some(value) else { return default }
-  guard value is Number(x, ..) &&
+  guard value is Number(x, repr~) &&
     x >= low.to_double() &&
     x <= high.to_double() &&
-    x == x.to_int().to_double() else {
+    x == x.to_int().to_double() &&
+    !(repr is Some(token) &&
+      (token.contains(".") || token.contains("e") || token.contains("E"))) else {
     raise InvalidArguments
   }
   x.to_int()
@@ -245,9 +247,6 @@ fn tool_error(message : String) -> Json {
 ///|
 fn tool_result(value : Json) -> Json {
   let text = value.stringify()
-  if text.length() > 16 * 1024 * 1024 {
-    return tool_error("Result exceeds the transport limit; narrow the scan.")
-  }
   let message = if text.length() <= 65536 {
     text
   } else {
@@ -326,7 +325,7 @@ fn Server::dispatch(self : Server, request : Json) -> Json? {
     return Some(
       success(id, {
         "protocolVersion": Json(version),
-        "serverInfo": { "name": "moon-license-scan", "version": "0.1.1" },
+        "serverInfo": { "name": "moon-license-scan", "version": Json(@scan.VERSION) },
         "capabilities": { "tools": {} },
       }),
     )
@@ -365,6 +364,25 @@ fn Server::dispatch(self : Server, request : Json) -> Json? {
 }
 
 ///|
+fn encode_reply(value : Json, limit~ : Int32 = 16 * 1024 * 1024) -> Bytes {
+  let line = value.stringify() + "\n"
+  if line.length() <= limit {
+    let data = @utf8.encode(line[:])
+    if data.length() <= limit {
+      return data
+    }
+  }
+  let id = match value {
+    { "id": id, .. } => id
+    _ => Json::null()
+  }
+  let error = success(id, tool_error(
+    "Result exceeds the transport limit; narrow the scan or page size.",
+  )).stringify() + "\n"
+  @utf8.encode(error[:])
+}
+
+///|
 pub async fn serve(root : String) -> Unit {
   let session = @scan.Session::open(root)
   defer session.close()
@@ -388,7 +406,7 @@ pub async fn serve(root : String) -> Unit {
         }
     }
     if reply is Some(value) {
-      @stdio.stdout.write(value.stringify() + "\n")
+      @stdio.stdout.write(encode_reply(value))
     }
   }
 }

@@ -9,6 +9,7 @@ pub struct Root {
 
 ///|
 /// One immediate child, with a slash-separated path relative to the scan root.
+/// A name that cannot be represented as UTF-8 uses a non-openable path.
 pub(all) struct Entry {
   path : String
   kind : String
@@ -183,6 +184,23 @@ fn Root::resolve(
 }
 
 ///|
+fn decode_entry(prefix : String, entry : Bytes) -> Entry {
+  let name = @utf8.decode(entry[1:]) catch { _ => "" }
+  if name == "" {
+    // NUL cannot be part of a native name and is rejected by path validation.
+    return { path: prefix + "\u0000", kind: "unreadable", }
+  }
+  let kind = match entry[0] {
+    b'\x01' => "file"
+    b'\x02' => "directory"
+    b'\x03' => "link"
+    b'\x04' => "other"
+    _ => "unreadable"
+  }
+  { path: prefix + name, kind, }
+}
+
+///|
 /// List at most limit immediate children. The second result indicates EOF;
 /// an exact-limit directory can be complete. Use "" for the root directory.
 pub fn Root::list(
@@ -221,15 +239,7 @@ pub fn Root::list(
     if entries.length() == limit {
       return (entries, false)
     }
-    let name = @utf8.decode(entry[1:])
-    let kind = match entry[0] {
-      b'\x01' => "file"
-      b'\x02' => "directory"
-      b'\x03' => "link"
-      b'\x04' => "other"
-      _ => "unreadable"
-    }
-    entries.push({ path: prefix + name, kind, })
+    entries.push(decode_entry(prefix, entry))
   }
   (entries, false)
 }

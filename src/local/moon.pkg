@@ -21,5 +21,6 @@ options(
     "ffi.mbt": [ "native" ],
     "local.mbt": [ "native" ],
     "local_test.mbt": [ "native" ],
+    "local_wbtest.mbt": [ "native" ],
   },
 )

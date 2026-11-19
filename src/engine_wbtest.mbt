@@ -1,7 +1,7 @@
 ///|
 test "word and evidence positions agree on BOM, CRLF and CR" {
   let text = "\u{FEFF}HeLLo world\r\n/* second * test */\rthird"
-  assert_eq(words(text).map(word => (word.value, word.line)), [
+  assert_eq(words(text).map(word => (word.value.to_owned(), word.line)), [
     ("hello", 1),
     ("world", 1),
     ("second", 2),
@@ -14,8 +14,9 @@ test "word and evidence positions agree on BOM, CRLF and CR" {
 ///|
 test "SPDX maintainer declarations are normalized, not confused with prose" {
   let text = "Mention SPDX-License-Identifier: MIT\r\n// SPDX-License-Identifier: ( MIT OR Apache-2.0 ) AND GPL-2.0-only WITH Classpath-exception-2.0\r\n/* SPDX-License-Identifier: MIT OR */"
-  let (labels, invalid, complete) = spdx_labels(text)
-  assert_true(invalid && complete)
+  let (labels, review, complete) = spdx_labels(text)
+  assert_true(complete)
+  assert_eq(review, ["invalid_spdx_label"])
   assert_eq(labels.map(hit => (hit.expression, hit.start_line)), [
     ("(MIT OR Apache-2.0) AND GPL-2.0-only WITH Classpath-exception-2.0", 2),
   ])
@@ -53,6 +54,54 @@ async test "UTF-8 BOM preserves first-line SPDX evidence across CRLF releases" {
     } else {
     fail("adding a BOM must not change the license evidence")
   }
+}
+
+///|
+async test "UTF-16 scanning, saved report and verified preview agree" {
+  let fixture = @test_fs.tmpdir(prefix="moon-license-utf16")
+  defer @test_fs.rmdir(fixture, recursive=true)
+  let path = fixture + "/unit.c"
+  let label = "(* SPDX-License-Identifier: mit *)"
+  let text = "中文\r\n" + label + "\r\n"
+  let scanner = Scanner::new()
+  for endianness in [@utf16.Little, @utf16.Big] {
+    let raw = @utf16.encode(text[:], bom=true, endianness~)
+    @test_fs.write_binary(path, raw)
+    let report = parse_report(scanner.scan(path).to_json().stringify())
+    guard report.files is [{ sha256: Some(digest), findings: [hit], .. }] else {
+      fail("expected a canonical declaration in the UTF-16 input")
+    }
+    assert_eq(digest, hash_bytes(raw))
+    assert_eq((hit.expression, hit.start_line, hit.end_line), ("MIT", 2, 2))
+    assert_eq(scanner.preview(path, report, hit.id).text, label)
+  }
+  @test_fs.write_binary(path, b"\xFF\xFE\x2F")
+  guard scanner.scan(path).files is [{ reason: Some("invalid_utf16"), .. }] else {
+    fail("truncated UTF-16 cannot produce evidence")
+  }
+}
+
+///|
+test "unknown SPDX names are excluded while references and deprecated IDs need review" {
+  let (labels, flags, complete) = spdx_labels(
+    "# SPDX-License-Identifier: MIT-Typo\n# SPDX-License-Identifier: MIT WITH MIT\n# SPDX-License-Identifier: DocumentRef-vendor:LicenseRef-custom\n# SPDX-License-Identifier: GPL-2.0+\n",
+  )
+  assert_true(complete)
+  assert_eq(labels.map(hit => hit.expression), ["DocumentRef-vendor:LicenseRef-custom", "GPL-2.0+"])
+  assert_eq(flags, ["unknown_spdx_id", "unresolved_license_ref", "deprecated_spdx_id"])
+}
+
+///|
+test "GNU appendix placeholders do not erase an independent actual grant" {
+  let grant = "This library is free software; you can redistribute it and/or\n" +
+    "modify it under the terms of the GNU Lesser General Public\n" +
+    "License as published by the Free Software Foundation; either\n" +
+    "version 2.1 of the License, or (at your option) any later version.\n"
+  let source = "Copyright (C) 2007 F. Example\n\n" + grant +
+    "\n<one line to give the library's name>\nCopyright (C) <year>  <name of author>\n\n" + grant
+  let (findings, _, complete) = Scanner::new().find("legal.txt", source, 256)
+  assert_true(complete)
+  assert_eq(findings.map(hit => (hit.expression, hit.start_line)), [("LGPL-2.1-or-later", 4)])
 }
 
 ///|

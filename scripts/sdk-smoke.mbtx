@@ -24,10 +24,13 @@ async fn main {
   }
   let version = name[prefix.length():name.length() - 4]
   let archive = publish + "/" + name
-  @fs.mkdir(temp + "/source")
-  guard @process.run("unzip", ["-q", archive, "-d", temp + "/source"]) == 0 else {
-    fail("SDK extraction failed")
+  let source = temp + "/source"
+  @fs.mkdir(source)
+  let status = match @async.platform {
+    Windows => @process.run("tar.exe", ["-xf", archive, "-C", source])
+    _ => @process.run("unzip", ["-q", archive, "-d", source])
   }
+  guard status == 0 else { fail("SDK extraction failed") }
   @fs.mkdir(temp + "/consumer/src", recursive=true)
   let consumer = temp + "/consumer"
   @fs.write_file(
@@ -52,6 +55,7 @@ async fn main {
     consumer + "/src/main.mbt",
     (
       #|fn main {
+      $|  guard @scan.VERSION == "\{version}" else { abort("SDK version does not match the archive") }
       #|  let report = @scan.Scanner::new().scan("example.c") catch { _ => abort("independent scan failed") }
       #|  guard report.files is [{findings: [{expression: "MIT", start_line: 1, ..}], ..}] else {
       #|    abort("expected MIT evidence at line 1")

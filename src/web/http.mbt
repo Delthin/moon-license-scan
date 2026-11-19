@@ -185,18 +185,27 @@ async fn read_json(conn : @socket.Tcp, prefix : Bytes, length : Int32) -> Json {
 }
 
 ///|
+const SCAN_REVISION_HEADER : String = "X-Scan-Revision"
+
+///|
 priv struct Response {
   status : String
   content_type : String
   body : String
+  scan_revision : String?
 }
 
 ///|
-fn json_reply(status : String, data : Json) -> Response {
+fn json_reply(
+  status : String,
+  data : Json,
+  scan_revision? : String,
+) -> Response {
   {
     status,
     content_type: "application/json; charset=utf-8",
     body: data.stringify(),
+    scan_revision,
   }
 }
 
@@ -206,9 +215,27 @@ fn error_reply(status : String, message : String) -> Response {
 }
 
 ///|
+fn encode_response(response : Response) -> (Response, Bytes) {
+  if response.body.length() <= REPORT_LIMIT {
+    let body = @utf8.encode(response.body[:])
+    if body.length() <= REPORT_LIMIT {
+      return (response, body)
+    }
+  }
+  let error = error_reply(
+    "413 Content Too Large", "The result exceeds 16 MiB. Narrow the scan and try again.",
+  )
+  (error, @utf8.encode(error.body[:]))
+}
+
+///|
 async fn send_response(conn : @socket.Tcp, response : Response) -> Unit {
-  let body = @utf8.encode(response.body[:])
-  let head = "HTTP/1.1 \{response.status}\r\nContent-Type: \{response.content_type}\r\nContent-Length: \{body.length()}\r\nConnection: close\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nX-Frame-Options: DENY\r\nReferrer-Policy: same-origin\r\nContent-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'\r\n\r\n"
+  let (response, body) = encode_response(response)
+  let revision_header = match response.scan_revision {
+    Some(revision) => "\{SCAN_REVISION_HEADER}: \{revision}\r\n"
+    None => ""
+  }
+  let head = "HTTP/1.1 \{response.status}\r\nContent-Type: \{response.content_type}\r\nContent-Length: \{body.length()}\r\n\{revision_header}Connection: close\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nX-Frame-Options: DENY\r\nReferrer-Policy: same-origin\r\nContent-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'\r\n\r\n"
   conn.write(@utf8.encode(head[:]))
   conn.write(body)
 }

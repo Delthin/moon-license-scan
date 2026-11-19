@@ -12,7 +12,7 @@ pub(all) struct RuleSource {
 }
 
 ///|
-/// Identifies the ScanCode release, local rule selection, and scanner behavior.
+/// Identifies the ScanCode release and local rule selection.
 pub fn version() -> String {
-  "scancode-32.5.0-curated.2-scan.1"
+  "scancode-32.5.0-curated.5"
 }

@@ -234,7 +234,10 @@ static moonbit_bytes_t native_cursor_next(native_cursor *cursor, int32_t *error)
     char utf8[16384 * 2];
     int length = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, name, count, utf8, sizeof(utf8), NULL, NULL);
     if (length == 0) {
-      *error = (int32_t)GetLastError();
+      DWORD code = GetLastError();
+      // A tag without a name marks an unrepresentable entry, not EOF.
+      if (code == ERROR_NO_UNICODE_TRANSLATION) return entry_bytes(INVALID, "", 0);
+      *error = (int32_t)code;
       return NULL;
     }
     return entry_bytes(attributes_kind(entry->FileAttributes), utf8, length);

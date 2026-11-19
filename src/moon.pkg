@@ -1,9 +1,11 @@
 import {
   "moonbitlang/core/json",
   "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/encoding/utf16",
   "moonbitlang/x/crypto",
   "Delthin/moon_license_scan/rules",
   "Delthin/moon_license_scan/local",
+  "Delthin/moon_license_scan/spdx_catalog",
 }
 
 import {

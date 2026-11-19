@@ -2,7 +2,10 @@
 import {
   "moonbitlang/async@0.22.5",
   "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/http",
+  "moonbitlang/async@0.22.5/io",
   "moonbitlang/async@0.22.5/process",
+  "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
 }
@@ -25,8 +28,10 @@ fn tool(id : Int32, name : String, arguments : Json) -> Json {
 
 ///|
 async fn run(bin : String, args : Array[String]) -> Json {
-  let (code, out, _) = @process.collect_output(bin, args)
-  guard code == 0 else { fail("CLI command failed: " + args.join(" ")) }
+  let (code, out, err) = @process.collect_output(bin, args)
+  guard code == 0 else {
+    fail("CLI command failed: " + args.join(" ") + ": " + err.text())
+  }
   @json.parse(out.text())
 }
 
@@ -46,29 +51,14 @@ fn payload(responses : ArrayView[Json], index : Int32) -> Json raise {
 }
 
 ///|
-async fn main {
-  let bin = match @env.args() {
-    [_, binary] => binary
-    _ => fail("Pass a built native scanner executable")
-  }
-  let root = @fs.realpath("examples/release-after")
-  let now = run(bin, ["scan", root, "--json"])
-  let previous = run(bin, ["scan", "examples/release-before", "--json"])
+async fn verify_mcp(
+  bin : String,
+  root : String,
+  previous : Json,
+  now : Json,
+  id : String,
+) -> Unit {
   let scoped = run(bin, ["scan", root, "--json", "--exclude", "vendor"])
-  guard now
-    is {
-      "files": [
-        _,
-        {
-          "path": "vendor/example.c",
-          "findings": [{ "id": String(id), "expression": "BSD-3-Clause", .. }],
-          ..
-        },
-      ],
-      ..
-    } else {
-    fail("CLI did not discover the untagged vendor notice")
-  }
   let tmp = @fs.tmpdir(prefix="moon-license-scan-mcp-")
   defer @fs.rmdir(tmp, recursive=true)
   let input = tmp + "/requests.ndjson"
@@ -163,6 +153,91 @@ async fn main {
     }
   }
   println(
-    "PASS: stdio, preview, comparison, notice, and default/scoped CLI parity",
+    "PASS: MCP stdio, preview, comparison, notice, and default/scoped CLI parity",
   )
+}
+
+///|
+async fn verify_web(
+  bin : String,
+  root : String,
+  now : Json,
+  id : String,
+) -> Unit {
+  @async.with_timeout(15000, () => {
+    @async.with_task_group(group => {
+      let (output, pipe) = @process.read_from_process()
+      defer output.close()
+      ignore(
+        @process.spawn(
+          group,
+          bin,
+          ["serve", root, "--port", "0"],
+          stdout=pipe,
+          cancel_handler=@process.hard_cancel(),
+          no_wait=true,
+        ),
+      )
+      guard output.read_until("\n") is Some(line) &&
+        line.trim() is [.. "License review: http://127.0.0.1:", .. port] &&
+        !port.is_empty() &&
+        port.iter().all(c => c is ('0'..<='9')) else {
+        fail("No loopback address from the Web server")
+      }
+      let url = "http://127.0.0.1:" + port.to_owned()
+      let (page, html) = @http.get(url + "/")
+      guard page.code == 200 && html.text().contains("/app.js") else {
+        fail("The review page did not load")
+      }
+      async fn post(route : String, input : Json) -> Json {
+        let bytes = @utf8.encode(input.stringify())
+        let client = @http.Client(url)
+        defer client.close()
+        let status = client.post(route, bytes, extra_headers={
+          "Content-Type": "application/json",
+          "Content-Length": bytes.length().to_string(),
+          "Origin": url,
+        })
+        let body = client.read_all()
+        guard status.code == 200 else {
+          fail("Web \{route} returned \{status.code}: \{body.text()}")
+        }
+        @json.parse(body.text())
+      }
+      guard post("/api/scan", {}) == now else {
+        fail("Web and CLI scan reports differ")
+      }
+      guard post("/api/preview", { "id": Json(id) })
+        is { "path": "vendor/example.c", "start_line": Number(4.0, ..), .. } else {
+        fail("Web preview did not return the reported vendor evidence")
+      }
+    })
+  })
+  println("PASS: Web review page, CLI report parity, and evidence preview")
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, bin, examples] else {
+    fail("Pass a built native scanner executable and an examples directory")
+  }
+  let root = @fs.realpath(examples + "/release-after")
+  let now = run(bin, ["scan", root, "--json"])
+  let previous = run(bin, ["scan", examples + "/release-before", "--json"])
+  guard now
+    is {
+      "files": [
+        _,
+        {
+          "path": "vendor/example.c",
+          "findings": [{ "id": String(id), "expression": "BSD-3-Clause", .. }],
+          ..
+        },
+      ],
+      ..
+    } else {
+    fail("CLI did not discover the untagged vendor notice")
+  }
+  verify_mcp(bin, root, previous, now, id)
+  verify_web(bin, root, now, id)
 }

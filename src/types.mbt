@@ -1,4 +1,8 @@
 ///|
+/// Installed version of the scanner and its entry points.
+pub const VERSION : String = "1.0.0"
+
+///|
 /// Bounds and explicit exclusion prefixes for a filesystem scan. Prefixes use
 /// slash-separated root-relative paths; Git ignore rules are not consulted.
 #derive(Eq, ToJson, FromJson)
@@ -124,6 +128,11 @@ pub suberror ScanError {
 
 ///|
 let schema_version : Int32 = 1
+
+///|
+fn rules_version() -> String {
+  @rules.version() + "-spdx329-scan2"
+}
 
 ///|
 let report_limit : Int32 = 16 * 1024 * 1024

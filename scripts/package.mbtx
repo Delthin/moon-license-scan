@@ -196,14 +196,14 @@ async fn main {
   }
   for
     path in [
-      "docs", "rule-sources", "examples/release-before", "examples/release-after/vendor",
+      "docs", "rule-sources", "spdx-sources", "src", "examples/release-before", "examples/release-after/vendor",
     ] {
     @fs.mkdir(stage + "/" + path, recursive=true)
   }
   for
     path in [
-      "docs/rules.md", "rule-sources/selection.tsv", "examples/release-before/LICENSE",
-      "examples/release-after/LICENSE", "examples/release-after/vendor/example.c",
+      "docs/rules.md", "rule-sources/selection.tsv", "spdx-sources/README.md", "src/pkg.generated.mbti",
+      "examples/release-before/LICENSE", "examples/release-after/LICENSE", "examples/release-after/vendor/example.c",
     ] {
     copy(path, stage + "/" + path)
   }
@@ -217,7 +217,30 @@ async fn main {
   guard @process.run("tar", ["-xzf", temp + "/" + archive, "-C", sample]) == 0 else {
     fail("Archive extraction failed")
   }
-  verify_examples(sample + "/" + name + "/bin/" + command, sample, name)
+  let extracted = sample + "/" + name
+  let extracted_binary = extracted + "/bin/" + command
+  let (version_code, version_out, _) = @process.collect_output(
+    extracted_binary,
+    ["--version"],
+    cwd=sample,
+  )
+  guard version_code == 0 &&
+    version_out.text().trim().has_prefix("moon-license-scan ") else {
+    fail("The extracted scanner did not print its version")
+  }
+  verify_examples(extracted_binary, sample, name)
+  guard @process.run("moon", [
+      "run",
+      "--target",
+      "native",
+      "scripts/transport-smoke.mbtx",
+      "--",
+      extracted_binary,
+      extracted + "/examples",
+    ]) ==
+    0 else {
+    fail("Extracted scanner transport smoke failed")
+  }
 
   let bytes = @fs.read_file(temp + "/" + archive)
   let checksum = @crypto.bytes_to_hex_string(@crypto.sha256(bytes.binary()))

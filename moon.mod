@@ -1,6 +1,6 @@
 name = "Delthin/moon_license_scan"
 
-version = "0.1.1"
+version = "1.0.0"
 
 readme = "README.md"
 

@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub const VERSION : String = "1.0.0"
+
 pub fn compare(Report, Report) -> @json.Json
 
 pub fn parse_report(String) -> Report raise

@@ -1,6 +1,6 @@
 ///|
 priv struct Word {
-  value : String
+  value : StringView
   line : Int32
 }
 
@@ -24,7 +24,7 @@ fn words(text : String) -> Array[Word] {
       }
     } else {
       if start >= 0 {
-        output.push({ value: text[start:i].to_owned().to_lower(), line, })
+        output.push({ value: text[start:i].to_lower(), line, })
         start = -1
       }
       if code == 10 ||
@@ -34,7 +34,7 @@ fn words(text : String) -> Array[Word] {
     }
   }
   if start >= 0 {
-    output.push({ value: text[start:].to_owned().to_lower(), line, })
+    output.push({ value: text[start:].to_lower(), line, })
   }
   output
 }

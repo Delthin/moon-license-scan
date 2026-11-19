@@ -29,7 +29,7 @@ fn review_file(path : String, findings : Array[Finding]) -> FileResult {
 fn review_report(files : Array[FileResult], complete~ : Bool = true) -> Report {
   {
     schema_version,
-    rules_version: @rules.version(),
+    rules_version: rules_version(),
     directory: true,
     options: ScanOptions::default(),
     enumeration_complete: complete,

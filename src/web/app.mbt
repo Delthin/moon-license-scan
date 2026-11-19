@@ -20,20 +20,26 @@ let script : String =
   #|const readable = (reason) => reason.replaceAll("_", " ");
   #|const reasons = (values) => values.map(readable).join("; ");
   #|let report = null;
+  #|let scanRevision = null;
   #|let pageIndex = 0;
   #|let busy = false;
   #|const fileInput = $("previous-report");
   #|const PAGE_SIZE = 50;
   #|
-  #|async function post(operation, body = "{}") {
+  #|async function post(operation, body = "{}", revision = scanRevision) {
+  #|  const headers = { "Content-Type": "application/json" };
+  #|  if (operation !== "scan") {
+  #|    if (!revision) throw new Error("Scan the authorized directory first.");
+  #|    headers["X-Scan-Revision"] = revision;
+  #|  }
   #|  const response = await fetch("/api/" + operation, {
-  #|    method: "POST", headers: { "Content-Type": "application/json" }, body,
+  #|    method: "POST", headers, body,
   #|    mode: "same-origin", redirect: "error", cache: "no-store",
   #|  });
   #|  const raw = await response.text();
   #|  const data = JSON.parse(raw);
   #|  if (!response.ok) throw new Error(data.error);
-  #|  return { raw, data };
+  #|  return { raw, data, revision: response.headers.get("X-Scan-Revision") };
   #|}
   #|
   #|function download(id, filename, raw) {
@@ -83,7 +89,7 @@ let script : String =
   #|  ? "line " + finding.start_line : "lines " + finding.start_line + "–" + finding.end_line;
   #|const evidenceLabel = (finding) => finding.expression + " · " + lines(finding);
   #|
-  #|function evidence(finding) {
+  #|function evidence(finding, revision) {
   #|  const message = node("p");
   #|  message.setAttribute("role", "status");
   #|  const details = disclosure(evidenceLabel(finding) + " · Open evidence", message);
@@ -94,7 +100,7 @@ let script : String =
   #|    pending = true;
   #|    message.textContent = "Verifying source evidence…";
   #|    try {
-  #|      const { data } = await post("preview", JSON.stringify({ id: finding.id }));
+  #|      const { data } = await post("preview", JSON.stringify({ id: finding.id }), revision);
   #|      message.textContent = "Verified source, " + lines(data) + ".";
   #|      details.append(node("pre", data.text));
   #|      loaded = true;
@@ -123,8 +129,9 @@ let script : String =
   #|    item.append(header);
   #|    if (file.findings.length) {
   #|      const findings = disclosure(file.findings.length + " findings");
+  #|      const revision = scanRevision;
   #|      findings.addEventListener("toggle", () => {
-  #|        if (findings.open && findings.childElementCount === 1) findings.append(...file.findings.map(evidence));
+  #|        if (findings.open && findings.childElementCount === 1) findings.append(...file.findings.map((finding) => evidence(finding, revision)));
   #|      });
   #|      item.append(findings);
   #|    }
@@ -142,6 +149,11 @@ let script : String =
   #|  download("download-comparison");
   #|}
   #|
+  #|function resetNotice() {
+  #|  $("notice-results").replaceChildren();
+  #|  download("download-notice");
+  #|}
+  #|
   #|$("scan").onclick = () => run("Scanning the authorized directory…", async () => {
   #|  const options = { exclude: $("exclude").value.split("\n").filter((line) => line !== "") };
   #|  for (const input of document.querySelectorAll("#scan-options input")) {
@@ -149,10 +161,11 @@ let script : String =
   #|    if (input.value !== "") options[input.name] = input.valueAsNumber;
   #|  }
   #|  const result = await post("scan", JSON.stringify({ options }));
+  #|  if (!result.revision) throw new Error("The server did not send a scan revision. Reload the workbench and try again.");
   #|  report = result.data;
+  #|  scanRevision = result.revision;
   #|  resetComparison();
-  #|  $("notice-results").replaceChildren();
-  #|  download("download-notice");
+  #|  resetNotice();
   #|  download("download-report", "license-scan-report.json", result.raw);
   #|  const scope = report.options;
   #|  const excluded = scope.exclude.map((prefix) => JSON.stringify(prefix)).join(", ") || "none";
@@ -199,6 +212,7 @@ let script : String =
   #|});
   #|
   #|$("notice").onclick = () => run("Checking the notice sources…", async () => {
+  #|  resetNotice();
   #|  const { data, raw } = await post("notice");
   #|  const result = $("notice-results");
   #|  result.replaceChildren(node("p", data.entries.length + " candidates; " + data.review.length + " files to review."));

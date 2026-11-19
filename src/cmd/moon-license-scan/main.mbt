@@ -16,6 +16,7 @@ let help : String =
   #|  notice PATH REPORT [--output FILE]
   #|  mcp DIRECTORY
   #|  serve DIRECTORY [--port PORT]
+  #|  --version
   #|
   #|Scan limits: --max-file-bytes N, --max-total-bytes N, --max-entries N,
   #|             --max-findings N. Paths in --exclude are root-relative prefixes.
@@ -155,6 +156,7 @@ fn output_flag(args : ArrayView[String]) -> String? raise Usage {
 async fn run(args : Array[String]) -> Unit {
   match args[:] {
     [_] | [_, "--help"] | [_, "-h"] => @stdio.stdout.write(help + "\n")
+    [_, "--version"] => @stdio.stdout.write("moon-license-scan " + @scan.VERSION + "\n")
     [_, "scan", path, .. flags] => scan_command(path, flags)
     [_, "mcp", path] => @mcp.serve(path)
     [_, "serve", path] => @web.serve(path, 0)

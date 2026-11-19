@@ -18,7 +18,7 @@ priv struct Selected {
   id : String
   expression : String
   kind : String
-  path : String
+  source : String
   sha256 : String
   lines : Array[String]
   words : Array[String]
@@ -81,6 +81,7 @@ fn main raise {
   )
   let selected : Array[Selected] = []
   let seen : Map[String, Unit] = Map([])
+  let fingerprints : Map[String, String] = Map([])
   for row in rows[1:] {
     if row.trim().is_empty() {
       continue
@@ -125,11 +126,21 @@ fn main raise {
     guard words.length() >= 2 else {
       fail("rule must contain an adjacent word pair: \{id}")
     }
+    let fingerprint = words.join(" ")
+    if fingerprints.get(fingerprint) is Some(previous) {
+      fail("conflicting normalized rules: \{previous} and \{id}")
+    }
+    fingerprints[fingerprint] = id
+    let location = if from == through {
+      "#L\{from}"
+    } else {
+      "#L\{from}-L\{through}"
+    }
     selected.push({
       id,
       expression: expression.to_owned(),
       kind: kind.to_owned(),
-      path: file,
+      source: "\{origin}\{file}\{location}",
       sha256,
       lines: pattern,
       words,
@@ -152,7 +163,7 @@ fn main raise {
       generated.write_string("        #|\{line}\n")
     }
     generated.write_string(
-      "      ),\n      kind: \{source_string(entry.kind)},\n      source: \{source_string(origin + entry.path)},\n      sha256: \{source_string(entry.sha256)},\n      notice: None,\n      anchor: \{offset},\n    },\n",
+      "      ),\n      kind: \{source_string(entry.kind)},\n      source: \{source_string(entry.source)},\n      sha256: \{source_string(entry.sha256)},\n      notice: None,\n      anchor: \{offset},\n    },\n",
     )
   }
   generated.write_string("  ]\n}")

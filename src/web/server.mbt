@@ -7,16 +7,29 @@ priv suberror StartupError {
 
 ///|
 fn static_reply(content_type : String, body : String) -> Response {
-  { status: "200 OK", content_type, body, }
+  { status: "200 OK", content_type, body, scan_revision: None, }
+}
+
+///|
+priv struct Workbench {
+  session : @scan.Session
+  started_at : UInt64
+  mut revision : Int64
+}
+
+///|
+fn Workbench::revision_token(self : Workbench) -> String {
+  "\{self.started_at}-\{self.revision}"
 }
 
 ///|
 fn api_reply(
-  session : @scan.Session,
-  target : String,
+  workbench : Workbench,
+  req : Request,
   body : Json,
 ) -> Response raise RequestError {
-  if target == "/api/scan" {
+  let session = workbench.session
+  if req.target == "/api/scan" {
     let options = match body {
       Object(fields) if fields.is_empty() => @scan.ScanOptions::default()
       Object(fields) if fields.length() == 1 &&
@@ -28,16 +41,27 @@ fn api_reply(
         }
       _ => raise BadRequest
     }
-    return json_reply("200 OK", session.scan(options~).to_json()) catch {
+    let report = session.scan(options~) catch {
       _ =>
-        error_reply(
+        return error_reply(
           "500 Internal Server Error", "The authorized directory could not be scanned.",
         )
     }
+    workbench.revision += 1
+    return json_reply(
+      "200 OK",
+      report.to_json(),
+      scan_revision=workbench.revision_token(),
+    )
   }
-  // Validate the caller's data even when there is no active scan.
   guard body is Object(fields) else { raise BadRequest }
-  match target {
+  if req.headers.get(SCAN_REVISION_HEADER.to_lower()) is Some(revision) &&
+    (workbench.revision == 0 || revision != workbench.revision_token()) {
+    return error_reply(
+      "409 Conflict", "The current scan has changed. Scan again in this tab.",
+    )
+  }
+  match req.target {
     "/api/preview" => {
       guard fields.length() == 1 &&
         fields.get("id") is Some(String(id)) &&
@@ -119,7 +143,7 @@ fn scan_first() -> Response {
 
 ///|
 async fn route(
-  session : @scan.Session,
+  workbench : Workbench,
   host : String,
   conn : @socket.Tcp,
 ) -> Response {
@@ -142,7 +166,7 @@ async fn route(
       let body = @async.with_timeout(15000, () => {
         read_json(conn, prefix, length)
       })
-      api_reply(session, req.target, body)
+      api_reply(workbench, req, body)
     }
     _ => raise NotFound
   }
@@ -191,7 +215,7 @@ pub async fn serve(root : String, port : Int32) -> Unit {
     _ => raise ListenUnavailable
   }
   let host = "127.0.0.1:\{listener.addr.port()}"
-  println("License review: http://\{host}")
+  @stdio.stdout.write("License review: http://\{host}\n")
   serve_session(session, listener, host)
 }
 
@@ -201,8 +225,10 @@ async fn serve_session(
   listener : @socket.TcpServer,
   host : String,
 ) -> Unit {
+  let workbench : Workbench = { session, started_at: @env.now(), revision: 0, }
   listener.run_forever(max_connections=4, (conn, _) => {
-    let response = route(session, host, conn) catch {
+    // API dispatch has no awaits between checking a revision and using its report.
+    let response = route(workbench, host, conn) catch {
       error => request_error(error)
     }
     @async.with_timeout(15000, () => send_response(conn, response))

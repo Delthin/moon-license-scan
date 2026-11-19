@@ -52,13 +52,30 @@ fn ScanOptions::excludes(self : ScanOptions, path : String) -> Bool {
 }
 
 ///|
-fn contains_nul(data : Bytes) -> Bool {
-  for byte in data {
-    if byte == 0 {
-      return true
+fn source_text(data : Bytes) -> Result[String, String] {
+  match data[:] {
+    [0xFF, 0xFE, 0, 0, ..] | [0, 0, 0xFE, 0xFF, ..] =>
+      Err("unsupported_encoding")
+    [0xFF, 0xFE, ..] | [0xFE, 0xFF, ..] => {
+      let text = @utf16.decode(data[:], endianness=if data[0] == 0xFF {
+        Little
+      } else {
+        Big
+      }) catch {
+        _ => return Err("invalid_utf16")
+      }
+      if text.contains("\u{0000}") { Err("binary") } else { Ok(text) }
+    }
+    _ => {
+      for byte in data {
+        if byte == 0 {
+          return Err("binary")
+        }
+      }
+      let text = @utf8.decode(data[:]) catch { _ => return Err("invalid_utf8") }
+      Ok(text)
     }
   }
-  false
 }
 
 ///|
@@ -195,12 +212,10 @@ fn Scanner::scan_at(
               },
               bytes~,
             )
-          } else if contains_nul(raw) {
-            skipped(path, "binary", bytes~)
           } else {
-            match (Some(@utf8.decode(raw[:])) catch { _ => None }) {
-              None => skipped(path, "invalid_utf8", bytes~)
-              Some(text) => {
+            match source_text(raw) {
+              Err(reason) => skipped(path, reason, bytes~)
+              Ok(text) => {
                 let (evidence, review, complete) = self.find(
                   path,
                   text,
@@ -246,7 +261,7 @@ fn Scanner::scan_at(
   files.sort_by((a, b) => a.path.compare(b.path))
   {
     schema_version,
-    rules_version: @rules.version(),
+    rules_version: rules_version(),
     directory,
     options,
     enumeration_complete,
@@ -275,7 +290,7 @@ fn verified_text(
 ) -> String raise {
   validate_options(current.options)
   if current.schema_version != schema_version ||
-    current.rules_version != @rules.version() ||
+    current.rules_version != rules_version() ||
     boundary.is_directory() != current.directory ||
     !relative_path(file.path) ||
     current.options.excludes(file.path) {
@@ -285,11 +300,13 @@ fn verified_text(
   let raw = boundary.read(file.path, current.options.max_file_bytes)
   if raw.length() > current.options.max_file_bytes ||
     raw.length() != file.bytes ||
-    hash_bytes(raw) != expected ||
-    contains_nul(raw) {
+    hash_bytes(raw) != expected {
     raise StaleEvidence
   }
-  @utf8.decode(raw[:])
+  match source_text(raw) {
+    Ok(text) => text
+    Err(_) => raise StaleEvidence
+  }
 }
 
 ///|
