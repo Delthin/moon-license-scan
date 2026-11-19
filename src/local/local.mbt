@@ -21,7 +21,7 @@ priv suberror LocalError {
   ClosedRoot
   NotDirectory
   Filesystem(String, Int32)
-}
+} derive(Show)
 
 ///|
 fn encode_path(path : StringView) -> Bytes raise {
@@ -188,6 +188,10 @@ pub fn Root::list(
     native_close(parent)
   }
   defer native_directory_close(directory)
+  let open_code = native_directory_error(directory)
+  if open_code != 0 {
+    raise Filesystem("open directory cursor", open_code)
+  }
   let entries : Array[Entry] = []
   let prefix = if relative_directory == "" {
     ""
