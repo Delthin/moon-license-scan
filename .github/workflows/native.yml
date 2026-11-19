@@ -1,0 +1,62 @@
+name: Native builds
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+env:
+  MOONBIT_INSTALL_VERSION: "0.10.20+65efd5b93"
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux-x64
+          - os: macos-15
+            platform: macos-arm64
+          - os: windows-2025
+            platform: windows-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install MoonBit (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          curl -fsSLo "$RUNNER_TEMP/moon-install.sh" https://cli.moonbitlang.com/install/unix.sh
+          bash "$RUNNER_TEMP/moon-install.sh"
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Install MoonBit (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Invoke-RestMethod https://cli.moonbitlang.com/install/powershell.ps1 | Invoke-Expression
+          "$HOME\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - run: moon version --all
+      - run: moon update
+      - run: moon check --target native
+      - run: moon test --target native
+      - run: moon run --target native scripts/package.mbtx -- dist ${{ matrix.platform }}
+      - name: Verify MCP integration
+        if: runner.os == 'Linux'
+        run: moon run --target native scripts/mcp-smoke.mbtx -- "${{ github.workspace }}/_build/native/release/build/cmd/moon-license-scan/moon-license-scan.exe"
+      - name: Verify independent SDK consumer
+        if: runner.os == 'Linux'
+        run: moon run --target native scripts/sdk-smoke.mbtx
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: moon-license-scan-${{ matrix.platform }}
+          path: |
+            dist/*.tar.gz
+            dist/*.sha256
+          if-no-files-found: error
+      - name: Upload verified Mooncakes SDK
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: moon-license-scan-sdk
+          path: _build/publish/Delthin-moon_license_scan-*.zip
+          if-no-files-found: error

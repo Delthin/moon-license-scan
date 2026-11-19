@@ -1,0 +1,47 @@
+id	expression	kind	path	first_line	last_line	sha256	selection
+mit-text	MIT	text	rules/mit_1.RULE	6	23	08cbe471b04f5dd47a22a2ca575770a34db2d55b2eb71346ebb103c48fad104d	License body without project-specific copyright
+mit-copyright-holders-text	MIT	text	rules/mit_338.RULE	10	26	6388a3d13fd46590a75474a7762bee5b293df5726aa2089a259b6a7ee8525917	License body with authors or copyright holders in the liability clause
+bsd-3-numbered-text	BSD-3-Clause	text	rules/bsd-new_105.RULE	6	30	31816295ef3b299fa94f03c8f81548392e774fead6d21f57ef81c626cc7f118b	Numbered conditions and disclaimer
+bsd-3-bulleted-text	BSD-3-Clause	text	rules/bsd-new_1426.RULE	9	31	426b8eec9f991bf959a41e216a9f24eb8ed07fd67555a039647fb8f08efe7417	Unnumbered conditions and disclaimer without Debian field header
+bsd-2-text	BSD-2-Clause	text	licenses/bsd-simplified.LICENSE	22	41	747358044a21d8adc4f9895eeed0df8c633045010a9f33781afb9e26851ecd75	Two conditions followed immediately by the disclaimer
+bsd-2-numbered-text	BSD-2-Clause	text	rules/bsd-simplified_262.RULE	11	30	41f005a6611af6cbc14b6c9d679595a7799cbb162aa1cc6efb63d75d88b44e22	Numbered conditions followed immediately by disclaimer; excludes license reference and note
+bsd-shared-numbered		ambiguous	rules/bsd-new_105.RULE	6	14	31816295ef3b299fa94f03c8f81548392e774fead6d21f57ef81c626cc7f118b	Shared lead-in and first two numbered conditions; manual review only
+bsd-shared-unnumbered		ambiguous	licenses/bsd-simplified.LICENSE	22	30	747358044a21d8adc4f9895eeed0df8c633045010a9f33781afb9e26851ecd75	Shared lead-in and first two unnumbered conditions; manual review only
+bsd-0-text	0BSD	text	licenses/bsd-zero.LICENSE	14	23	72805e783d6e054030231c995eac39958f8ad14f6a5233d827e694fcb330fae8	Unconditional permission and complete disclaimer distinguish ISC
+bsd-4-advertising	BSD-4-Clause	fragment	licenses/bsd-original.LICENSE	19	30	c08fb2150b68d0fa7696da034a74eaea9b8c1e40699bc53808bf851c12e303de	Two redistribution conditions and advertising acknowledgment introduce the four-clause variant without a holder placeholder
+apache-1.1-text	Apache-1.1	text	licenses/apache-1.1.LICENSE	36	75	aa8ebdee98a630b46b20ddedd5224cd8abd9b12e35e33bc513d8136d0147df40	Five conditions and disclaimer; starts after the copyright holder line
+apache-1.1-notice	Apache-1.1	fragment	rules/apache-1.1_91.RULE	7	7	a28ea497978f4a1c91a425847dc8f7409541c614101be04c069f1b5a65ff35b2	Version-specific license notice
+apache-2.0-text	Apache-2.0	text	licenses/apache-2.0.LICENSE	29	204	e8dd2ea1bca23d29cae4bbd6160301b7aea5a2485bd0e417003835135b2629be	Version and operative terms; excludes the optional appendix on applying the license
+apache-2.0-text-with-appendix	Apache-2.0	text	licenses/apache-2.0.LICENSE	29	229	e8dd2ea1bca23d29cae4bbd6160301b7aea5a2485bd0e417003835135b2629be	Official terms plus the standard appendix; folds the example header into the license body
+apache-2.0-header	Apache-2.0	fragment	licenses/apache-2.0.LICENSE	219	220	e8dd2ea1bca23d29cae4bbd6160301b7aea5a2485bd0e417003835135b2629be	Source-file license notice with version and compliance clause; excludes template copyright and URL
+isc-text	ISC	text	licenses/isc.LICENSE	26	36	be46c65d5d5acb6543a5c17cd39ecd7d107bc905969d4a03aecbf10c9067dc1b	Permission retaining copyright and notice, then full disclaimer
+zlib-text	Zlib	text	licenses/zlib.LICENSE	21	37	5a80154e23388844fc7075c31535c5b166ad19677d2d4bb8ca9cd84de3f8719b	Full grant, disclaimer and three restrictions
+mpl-1.1-body	MPL-1.1	fragment	licenses/mpl-1.1.LICENSE	27	32	9de11ec3e837b5d554e2829d734c7f9ebd652e2fa6b08d8adb0c06ca6d876851	Version heading plus first numbered definition identifies the body; not a full license
+mpl-1.1-header	MPL-1.1	fragment	licenses/mpl-1.1.LICENSE	160	160	9de11ec3e837b5d554e2829d734c7f9ebd652e2fa6b08d8adb0c06ca6d876851	Version-specific Exhibit A notice; excludes holder placeholders
+mpl-2.0-body	MPL-2.0	fragment	licenses/mpl-2.0.LICENSE	28	31	3c31f441e0c9dd61c5bf700098b0d47f39147bf05af2873b959ab9c29c505eb7	Version heading and start of definitions identify the body
+mpl-2.0-header	MPL-2.0	fragment	licenses/mpl-2.0.LICENSE	385	387	3c31f441e0c9dd61c5bf700098b0d47f39147bf05af2873b959ab9c29c505eb7	Version-specific Exhibit A source notice; excludes Exhibit B
+gpl-1.0-only-reference	GPL-1.0-only	fragment	rules/gpl-1.0_66.RULE	10	10	0e28815fc9117e2ca55f4abf341265c6ef5e9c0e8a5d2778c3fdb4865cc56321	Named license field explicitly says only
+gpl-1.0-or-later-header	GPL-1.0-or-later	fragment	rules/gpl-1.0-plus_1.RULE	8	10	7f181623ea4f130fe9444026512d8c8f1137c089ff1efbaca8b28d27fd49593a	Grant explicitly allows version 1 or later
+gpl-1.0-or-later-reference	GPL-1.0-or-later	fragment	rules/gpl-1.0-plus_554.RULE	10	10	89acb0e766f62bff85857ea1165698e1cf92216ffadf954544e311214d176c66	Named license field explicitly says or later
+gpl-2.0-only-header	GPL-2.0-only	fragment	rules/gpl-2.0_1218.RULE	10	11	a97c7113a143e5e6fe93ad5cfbdad8dab5dbdaf2f9114d0acd60f9835edf8406	Grant explicitly limits use to version 2
+gpl-2.0-or-later-header	GPL-2.0-or-later	fragment	rules/gpl-2.0-plus_404.RULE	10	12	a784ef6f35aeb606d89a1c370d103a1506679219171c165a731ee367f7973f0c	Grant explicitly allows version 2 or later
+gpl-2.0-or-later-reference	GPL-2.0-or-later	fragment	rules/gpl-2.0-plus_541.RULE	8	8	33712495e55325176ec3df4fa4589ec991d42fe8aa5c60633b2129e9fad58db6	Named reference explicitly says version 2 or later
+gpl-3.0-only-header	GPL-3.0-only	fragment	rules/gpl-3.0_436.RULE	9	9	bb151a873728a3c4a31d2806825edbb4044e72f0250b58e6efd3e2e97b97ff40	Grant explicitly limits use to version 3
+gpl-3.0-only-reference	GPL-3.0-only	fragment	rules/gpl-3.0_505.RULE	10	10	b33e184a7b40d5006cdc31575eb1652915f9ce4995b7de46007860b46291d75d	Named license field explicitly says only
+gpl-3.0-or-later-header	GPL-3.0-or-later	fragment	rules/gpl-3.0-plus_2.RULE	10	12	6bc6cde6a392655fa744a527e3f8062581bf00b0c62bfc1da078d4ded0d80798	Grant explicitly allows version 3 or later
+lgpl-2.0-only-header	LGPL-2.0-only	fragment	rules/lgpl-2.0_32.RULE	7	8	c9606fc945037f8960588ac9721254418cb983f1afa15dde35a4213b27c7c843	GNU Library grant explicitly says version 2 only
+lgpl-2.0-or-later-header	LGPL-2.0-or-later	fragment	rules/lgpl-2.0-plus_13.RULE	6	6	3849e21315efd5a4846cd00dc8006f5b51b07b3f3ff6b4361fb42427fdf56367	GNU Library grant explicitly allows version 2 or later
+lgpl-2.1-only-header	LGPL-2.1-only	fragment	rules/lgpl-2.1_93.RULE	7	9	00a9ddd2729c51dda2dc06996c08d9c839a7a8d09f59655ba68f5751d68a4f0a	GNU Lesser grant explicitly says only version 2.1
+lgpl-2.1-or-later-header	LGPL-2.1-or-later	fragment	rules/lgpl-2.1-plus_91.RULE	7	9	a25b6178a01a8c67d8f70dcbb429a981b545c77ff10cb238a86c09316208a66d	GNU Lesser grant explicitly allows version 2.1 or later
+lgpl-3.0-only-header	LGPL-3.0-only	fragment	rules/lgpl-3.0_44.RULE	12	13	a4446e0157ad97ae9604d183dc31b83325dc6d6da5fac2eb6e0adad5d8c2219e	GNU Lesser grant explicitly says version 3 only
+lgpl-3.0-or-later-header	LGPL-3.0-or-later	fragment	rules/lgpl-3.0-plus_25.RULE	9	11	c08ef6a6e2c5a8cefb877c619051bf330f99c9e6d4766fce5c081cd23ddf906b	GNU Lesser grant explicitly allows version 3 or later
+agpl-3.0-only-reference	AGPL-3.0-only	fragment	rules/agpl-3.0_362.RULE	9	9	3bdc968f57200801b005e6476997153e2b48d572f2ca77f60a1baee5d97f3f76	Named Affero reference explicitly says only
+agpl-3.0-or-later-header	AGPL-3.0-or-later	fragment	rules/agpl-3.0-plus_5.RULE	16	18	293917a2569438a0b77687152712464c293c4b7815c8ef757c972c51b1ea02e4	Affero grant explicitly allows version 3 or later
+epl-1.0-body	EPL-1.0	fragment	licenses/epl-1.0.LICENSE	22	24	dac0b90beac66f09509e114160ffb11580df33ea883223cde21890bb871bd2cd	Version heading and acceptance condition identify the body
+epl-1.0-header	EPL-1.0	fragment	rules/epl-1.0_25.RULE	8	8	37c5a8a7035856ffa0b8cabbc9007e1d92f4f2bb5c6daef96df93dbf6c6fa6a9	Source notice names version 1.0
+epl-2.0-body	EPL-2.0	fragment	licenses/epl-2.0.LICENSE	17	21	f9ea01d22986cd770b30adb1cb311b53d7f34c54f1173472bfdbfa3033acf025	Version heading and acceptance condition identify the body
+epl-2.0-header	EPL-2.0	fragment	rules/epl-2.0_57.RULE	7	7	b97bca7be5a11df8786f3b8233c8dc886bb581da08fca1808b18b4d7ed812019	Source notice names version 2.0
+boost-1.0-text	BSL-1.0	text	licenses/boost-1.0.LICENSE	23	43	eb59bf48e38010cc35502aa17d2cbae83e3dc3d437b13419037ed80ab9065fed	Full grant, condition and disclaimer; omits the title so source comments can match
+unlicense-text	Unlicense	text	licenses/unlicense.LICENSE	17	38	a1344a634dd306370ff9fefa132c5e48f333917762b9d44df5816e848add64ae	Full dedication and disclaimer; omits the optional information link
+cc0-1.0-body	CC0-1.0	fragment	licenses/cc0-1.0.LICENSE	16	27	eaffccce2c97b3424dd2fdb182664e3cd65b3d38e172a5d4a099cfcf9ac7977d	Version heading and introductory terms identify the body
+cc0-1.0-notice	CC0-1.0	fragment	rules/cc0-1.0_22.RULE	7	7	45fe5644dd51c171a588d66a9b17957ea5ba74e96ffcde3f82f1238d7dc10d95	Positive version-specific public-domain dedication reference

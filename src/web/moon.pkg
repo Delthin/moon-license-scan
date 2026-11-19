@@ -1,0 +1,13 @@
+import {
+  "Delthin/moon_license_scan" @scan,
+  "moonbitlang/async",
+  "moonbitlang/async/socket",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+}
+
+import {
+  "moonbitlang/async/fs" @test_fs,
+} for "wbtest"
+
+supported_targets = "native"

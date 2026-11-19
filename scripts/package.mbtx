@@ -1,0 +1,231 @@
+----
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/io",
+  "moonbitlang/async@0.22.5/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+----
+
+///|
+async fn copy(input : String, output : String) -> Unit {
+  @fs.write_file(output, @fs.read_file(input), create_mode=CreateNew)
+}
+
+///|
+async fn verify_examples(
+  binary : String,
+  sample : String,
+  name : String,
+) -> Unit {
+  let before = name + "/examples/release-before"
+  let after = name + "/examples/release-after"
+  let previous = "previous.json"
+  let current = "current.json"
+  async fn run(args : Array[String]) -> String {
+    let (code, stdout, stderr) = @process.collect_output(
+      binary,
+      args,
+      cwd=sample,
+    )
+    guard code == 0 else {
+      fail(
+        "Extracted scanner \{args[0]} failed (exit \{code}): \{stderr.text()}",
+      )
+    }
+    stdout.text()
+  }
+  ignore(run(["scan", before, "--json", "--output", previous]))
+  ignore(run(["scan", after, "--json", "--output", current]))
+  let previous_report = @json.parse(
+    @fs.read_file(sample + "/" + previous).text(),
+  )
+  guard previous_report
+    is {
+      "files": [
+        {
+          "path": String("LICENSE"),
+          "findings": [{ "expression": String("MIT"), .. }],
+          ..
+        },
+      ],
+      ..
+    } else {
+    fail("Previous example report did not contain only the MIT finding")
+  }
+  let current_report = @fs.read_file(sample + "/" + current)
+  guard @json.parse(current_report.text())
+    is {
+      "files": [
+        {
+          "path": String("LICENSE"),
+          "findings": [{ "expression": String("MIT"), .. }],
+          ..
+        },
+        {
+          "path": String("vendor/example.c"),
+          "findings": [
+            {
+              "expression": String("BSD-3-Clause"),
+              "kind": String("text"),
+              "id": String(id),
+              ..
+            },
+          ],
+          ..
+        },
+      ],
+      ..
+    } else {
+    fail(
+      "Current example report did not contain MIT and untagged BSD-3-Clause evidence",
+    )
+  }
+  guard @json.parse(run(["preview", after, current, id]))
+    is {
+      "path": String("vendor/example.c"),
+      "start_line": Number(4.0, ..),
+      "end_line": Number(28.0, ..),
+      "text": String(excerpt),
+      ..
+    } &&
+    excerpt.has_prefix(" * Redistribution and use in source and binary forms") &&
+    excerpt.has_suffix(" * POSSIBILITY OF SUCH DAMAGE.") else {
+    fail(
+      "Preview did not return the original BSD-3-Clause evidence at lines 4-28",
+    )
+  }
+  guard @json.parse(run(["compare", previous, current]))
+    is {
+      "status": String("comparable"),
+      "added": [
+        {
+          "path": String("vendor/example.c"),
+          "finding": {
+            "id": String(added_id),
+            "expression": String("BSD-3-Clause"),
+            ..
+          },
+          ..
+        },
+      ],
+      "removed": [],
+      "changed": [],
+      ..
+    } &&
+    added_id == id else {
+    fail("Comparison did not report the vendor BSD-3-Clause evidence as added")
+  }
+  guard @json.parse(run(["notice", after, current]))
+    is { "entries": Array(entries), .. } &&
+    entries
+    .iter()
+    .any(entry => {
+      entry
+      is {
+        "text": String(text),
+        "sources": [
+          {
+            "path": String("vendor/example.c"),
+            "id": String(notice_id),
+            "start_line": Number(2.0, ..),
+            "end_line": Number(28.0, ..),
+            "origin": String("source"),
+            ..
+          },
+        ],
+        ..
+      } &&
+      notice_id == id &&
+      text.contains("Copyright (c) 2026 Example Vendor Team")
+    }) else {
+    fail(
+      "Notice did not retain the vendor copyright and its source location at lines 2-28",
+    )
+  }
+  let (code, _, _) = @process.collect_output(
+    binary,
+    ["scan", before, "--json", "--output", current],
+    cwd=sample,
+  )
+  guard code != 0 &&
+    @fs.read_file(sample + "/" + current).binary() == current_report.binary() else {
+    fail("Scanner did not refuse to overwrite an existing report")
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 &&
+    ["linux-x64", "macos-arm64", "windows-x64"].contains(args[2]) else {
+    fail(
+      "Usage: moon run --target native scripts/package.mbtx -- DESTINATION PLATFORM",
+    )
+  }
+  let platform = args[2]
+  let windows = platform == "windows-x64"
+  @fs.mkdir(args[1], recursive=true, allow_exist=true)
+  let output = @fs.realpath(args[1])
+  let name = "moon-license-scan-\{platform}"
+  let archive = name + ".tar.gz"
+  guard !@fs.exists(output + "/" + archive) &&
+    !@fs.exists(output + "/" + archive + ".sha256") else {
+    fail("Distribution archive or checksum already exists")
+  }
+  guard @process.run("moon", ["build", "--target", "native", "--release"]) == 0 else {
+    fail("Native release build failed")
+  }
+  let temp = @fs.tmpdir(prefix="moon-license-scan-package-")
+  defer @fs.rmdir(temp, recursive=true)
+  let stage = temp + "/" + name
+  @fs.mkdir(stage + "/bin", recursive=true)
+  let command = "moon-license-scan" + (if windows { ".exe" } else { "" })
+  let binary = stage + "/bin/" + command
+  copy(
+    "_build/native/release/build/cmd/moon-license-scan/moon-license-scan.exe", binary,
+  )
+  if !windows {
+    @fs.chmod(binary, 0o755)
+  }
+  for path in ["LICENSE", "NOTICE", "README.md"] {
+    copy(path, stage + "/" + path)
+  }
+  for
+    path in [
+      "docs", "rule-sources", "examples/release-before", "examples/release-after/vendor",
+    ] {
+    @fs.mkdir(stage + "/" + path, recursive=true)
+  }
+  for
+    path in [
+      "docs/rules.md", "rule-sources/selection.tsv", "examples/release-before/LICENSE",
+      "examples/release-after/LICENSE", "examples/release-after/vendor/example.c",
+    ] {
+    copy(path, stage + "/" + path)
+  }
+  guard @process.run("tar", ["-czf", temp + "/" + archive, "-C", temp, name]) ==
+    0 else {
+    fail("Archive creation failed")
+  }
+
+  let sample = temp + "/smoke"
+  @fs.mkdir(sample)
+  guard @process.run("tar", ["-xzf", temp + "/" + archive, "-C", sample]) == 0 else {
+    fail("Archive extraction failed")
+  }
+  verify_examples(sample + "/" + name + "/bin/" + command, sample, name)
+
+  let bytes = @fs.read_file(temp + "/" + archive)
+  let checksum = @crypto.bytes_to_hex_string(@crypto.sha256(bytes.binary()))
+  @fs.write_file(output + "/" + archive, bytes, create_mode=CreateNew)
+  @fs.write_file(
+    output + "/" + archive + ".sha256",
+    checksum + "  " + archive + "\n",
+    create_mode=CreateNew,
+  )
+  println(output + "/" + archive)
+}

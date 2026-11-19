@@ -1,0 +1,71 @@
+----
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/process",
+}
+----
+
+///|
+async fn main {
+  guard @process.run("moon", ["package"]) == 0 else {
+    fail("Mooncakes package failed")
+  }
+  let archive = @fs.realpath(
+    "_build/publish/Delthin-moon_license_scan-0.1.1.zip",
+  )
+  let temp = @fs.tmpdir(prefix="moon-license-scan-sdk-")
+  defer @fs.rmdir(temp, recursive=true)
+  @fs.mkdir(temp + "/source")
+  guard @process.run("unzip", ["-q", archive, "-d", temp + "/source"]) == 0 else {
+    fail("SDK extraction failed")
+  }
+  @fs.mkdir(temp + "/consumer/src", recursive=true)
+  let consumer = temp + "/consumer"
+  @fs.write_file(
+    consumer + "/moon.mod",
+    (
+      #|name = "smoke/independent"
+      #|source = "src"
+      #|preferred_target = "native"
+      #|import { "Delthin/moon_license_scan@0.1.1" }
+    ),
+    create_mode=CreateNew,
+  )
+  @fs.write_file(
+    consumer + "/src/moon.pkg",
+    (
+      #|import { "Delthin/moon_license_scan" @scan }
+      #|pkgtype(kind: "executable")
+    ),
+    create_mode=CreateNew,
+  )
+  @fs.write_file(
+    consumer + "/src/main.mbt",
+    (
+      #|fn main {
+      #|  let report = @scan.Scanner::new().scan("example.c") catch { _ => abort("independent scan failed") }
+      #|  guard report.files is [{findings: [{expression: "MIT", start_line: 1, ..}], ..}] else {
+      #|    abort("expected MIT evidence at line 1")
+      #|  }
+      #|}
+    ),
+    create_mode=CreateNew,
+  )
+  @fs.write_file(
+    consumer + "/example.c",
+    "// SPDX-License-Identifier: MIT\n",
+    create_mode=CreateNew,
+  )
+  guard @process.run("moon", ["work", "init", "consumer", "source"], cwd=temp) ==
+    0 else {
+    fail("Could not select the extracted SDK as the local dependency")
+  }
+  guard @process.run("moon", ["run", "--target", "native", "src"], cwd=consumer) ==
+    0 else {
+    fail("Independent SDK consumer failed")
+  }
+  println(
+    "PASS: independent native project scanned with the extracted Mooncakes SDK",
+  )
+}

@@ -1,0 +1,25 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Delthin/moon_license_scan/rules"
+
+// Values
+pub fn corpus() -> Array[RuleSource]
+
+pub fn version() -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct RuleSource {
+  id : String
+  expression : String
+  pattern : String
+  kind : String
+  source : String
+  sha256 : String
+  notice : String?
+  anchor : Int32
+}
+
+// Type aliases
+
+// Traits

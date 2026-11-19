@@ -1,0 +1,168 @@
+----
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+----
+
+///|
+fn rpc(id : Int32, method_name : String, params : Json) -> Json {
+  {
+    "jsonrpc": "2.0",
+    "id": Json(id),
+    "method": Json(method_name),
+    "params": params,
+  }
+}
+
+///|
+fn tool(id : Int32, name : String, arguments : Json) -> Json {
+  rpc(id, "tools/call", { "name": Json(name), "arguments": arguments })
+}
+
+///|
+async fn run(bin : String, args : Array[String]) -> Json {
+  let (code, out, _) = @process.collect_output(bin, args)
+  guard code == 0 else { fail("CLI command failed: " + args.join(" ")) }
+  @json.parse(out.text())
+}
+
+///|
+fn payload(responses : ArrayView[Json], index : Int32) -> Json raise {
+  let expected = Json(index + 2)
+  guard responses[index]
+    is {
+      "id": id,
+      "result": { "structuredContent": Object(_) as body, .. },
+      ..
+    } &&
+    id == expected else {
+    fail("Missing tool result for request \{index + 2}")
+  }
+  body
+}
+
+///|
+async fn main {
+  let bin = match @env.args() {
+    [_, binary] => binary
+    _ => fail("Pass a built native scanner executable")
+  }
+  let root = @fs.realpath("examples/release-after")
+  let now = run(bin, ["scan", root, "--json"])
+  let previous = run(bin, ["scan", "examples/release-before", "--json"])
+  let scoped = run(bin, ["scan", root, "--json", "--exclude", "vendor"])
+  guard now
+    is {
+      "files": [
+        _,
+        {
+          "path": "vendor/example.c",
+          "findings": [{ "id": String(id), "expression": "BSD-3-Clause", .. }],
+          ..
+        },
+      ],
+      ..
+    } else {
+    fail("CLI did not discover the untagged vendor notice")
+  }
+  let tmp = @fs.tmpdir(prefix="moon-license-scan-mcp-")
+  defer @fs.rmdir(tmp, recursive=true)
+  let input = tmp + "/requests.ndjson"
+  let messages : Array[Json] = [
+    rpc(1, "initialize", {
+      "protocolVersion": "2025-11-25",
+      "capabilities": {},
+      "clientInfo": { "name": "smoke", "version": "1" },
+    }),
+    { "jsonrpc": "2.0", "method": "notifications/initialized" },
+    tool(2, "license_scan", {}),
+    tool(3, "license_report", { "offset": 1, "limit": 1 }),
+    tool(4, "license_preview", { "id": Json(id) }),
+    tool(5, "license_compare", { "previous": previous }),
+    tool(6, "license_notice", {}),
+    tool(7, "license_scan", { "path": "/" }),
+    tool(8, "license_scan", { "options": { "exclude": [".git", "vendor"] } }),
+  ]
+  let rounded_fraction =
+    #|{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"license_scan","arguments":{"options":{"max_entries":1.0000000000000001}}}}
+  @fs.write_file(
+    input,
+    messages.map(message => message.stringify()).join("\n") +
+    "\n" +
+    rounded_fraction +
+    "\n",
+    create_mode=CreateNew,
+  )
+  let (status, output, _) = @async.with_timeout(10000, () => {
+    @process.collect_output(
+      bin,
+      ["mcp", root],
+      stdin=@process.redirect_from_file(input),
+    )
+  })
+  guard status == 0 else { fail("MCP process exited unsuccessfully") }
+  let rows = output
+    .text()
+    .trim()
+    .split("\n")
+    .collect()
+    .map(line => @json.parse(line.to_owned()))
+  guard rows.length() == 9 &&
+    rows[0]
+    is {
+      "id": Number(1.0, ..),
+      "result": { "protocolVersion": "2025-11-25", .. },
+      ..
+    } else {
+    fail("MCP initialization or framing failed")
+  }
+  let scan = payload(rows[1:], 0)
+  let page = payload(rows[1:], 1)
+  let preview = payload(rows[1:], 2)
+  let compare = payload(rows[1:], 3)
+  let notice = payload(rows[1:], 4)
+  guard scan is Object(scan_map) && now is Object(now_map) else {
+    fail("Expected report objects")
+  }
+  for key, value in now_map {
+    guard scan_map.get(key) == Some(value) else {
+      fail("MCP and CLI report differ at " + key)
+    }
+  }
+  guard page
+    is {
+      "files": [{ "path": "vendor/example.c", .. }],
+      "next_offset": Null,
+      ..
+    } &&
+    preview
+    is {
+      "path": "vendor/example.c",
+      "start_line": Number(4.0, ..),
+      "end_line": Number(28.0, ..),
+      ..
+    } &&
+    compare
+    is { "added": [{ "path": "vendor/example.c", .. }], "removed": [], .. } &&
+    notice is { "entries": [_, _], "review": [], .. } &&
+    rows[6] is { "error": { "code": Number(-32602.0, ..), .. }, .. } else {
+    fail("MCP evidence, comparison, notice, or fixed-root checks did not match")
+  }
+  guard scoped is Object(scoped_fields) &&
+    payload(rows[1:], 6) is Object(scoped_page) &&
+    rows[8] is { "result": { "isError": True, .. }, .. } else {
+    fail("MCP scope or integer validation did not match")
+  }
+  for key, value in scoped_fields {
+    guard scoped_page.get(key) == Some(value) else {
+      fail("Scoped MCP and CLI report differ at " + key)
+    }
+  }
+  println(
+    "PASS: stdio, preview, comparison, notice, and default/scoped CLI parity",
+  )
+}

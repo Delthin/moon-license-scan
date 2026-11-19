@@ -1,0 +1,25 @@
+import {
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/cmp",
+  "moonbitlang/core/encoding/utf8",
+}
+
+import {
+  "moonbitlang/core/async",
+  "moonbitlang/core/async/fs" @test_fs,
+  "moonbitlang/core/async/process" @test_process,
+} for "test"
+
+options(
+  "native-stub": [ "local.c" ],
+  "allow-experimental-packages": [
+    "moonbitlang/core/async",
+    "moonbitlang/core/async/fs",
+    "moonbitlang/core/async/process",
+  ],
+  targets: {
+    "ffi.mbt": [ "native" ],
+    "local.mbt": [ "native" ],
+    "local_test.mbt": [ "native" ],
+  },
+)

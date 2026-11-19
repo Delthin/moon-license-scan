@@ -1,0 +1,28 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Delthin/moon_license_scan/local"
+
+// Values
+
+// Errors
+
+// Types and methods
+pub(all) struct Entry {
+  path : String
+  kind : String
+}
+
+type NativeFile
+
+pub struct Root {
+  // private fields
+}
+pub fn Root::close(Self) -> Unit
+pub fn Root::file_name(Self) -> String
+pub fn Root::is_directory(Self) -> Bool
+pub fn Root::list(Self, String, Int32) -> (Array[Entry], Bool) raise
+pub fn Root::open(String) -> Self raise
+pub fn Root::read(Self, String, Int32) -> Bytes raise
+
+// Type aliases
+
+// Traits

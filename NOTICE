@@ -1,0 +1,28 @@
+Moon License Scan
+=================
+
+The Moon License Scan software is licensed under the Apache License,
+Version 2.0. See LICENSE.
+
+ScanCode rule data attribution
+==============================
+
+The rule data embedded in src/rules/corpus.mbt is adapted from ScanCode
+Toolkit v32.5.0, commit abd87fb81609ea4a29ab4cdda755c188b8be3601:
+https://github.com/aboutcode-org/scancode-toolkit/tree/abd87fb81609ea4a29ab4cdda755c188b8be3601/src/licensedcode/data
+
+Copyright (c) nexB Inc. and others. All rights reserved.
+ScanCode is a trademark of nexB Inc.
+SPDX-License-Identifier: CC-BY-4.0
+See https://creativecommons.org/licenses/by/4.0/legalcode for the license text.
+See https://github.com/nexB/scancode-toolkit for support or download.
+See https://aboutcode.org for more information about nexB OSS projects.
+
+Moon License Scan selects contiguous lines from the upstream license and rule
+files, removes trailing whitespace, assigns local rule IDs and SPDX labels,
+and embeds the excerpts in its own data structure. The per-rule source path,
+line range, full original-file SHA-256 and selection reason appear in
+rule-sources/selection.tsv.
+
+Upstream notice:
+https://github.com/aboutcode-org/scancode-toolkit/blob/abd87fb81609ea4a29ab4cdda755c188b8be3601/NOTICE

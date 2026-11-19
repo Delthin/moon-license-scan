@@ -1,0 +1,19 @@
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+  "Delthin/moon_license_scan/rules",
+  "Delthin/moon_license_scan/local",
+}
+
+import {
+  "moonbitlang/core/async",
+  "moonbitlang/core/async/fs" @test_fs,
+} for "wbtest"
+
+options(
+  "allow-experimental-packages": [
+    "moonbitlang/core/async",
+    "moonbitlang/core/async/fs",
+  ],
+)

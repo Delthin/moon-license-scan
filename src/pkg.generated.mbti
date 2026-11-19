@@ -1,0 +1,102 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Delthin/moon_license_scan"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn compare(Report, Report) -> @json.Json
+
+pub fn parse_report(String) -> Report raise
+
+// Errors
+#derive(@debug.Debug)
+pub suberror ScanError {
+  InvalidInput(String)
+  StaleEvidence
+  UnknownEvidence
+  LimitExceeded(String)
+}
+
+// Types and methods
+type CompiledRule
+
+#derive(Eq, @json.FromJson, @json.ToJson)
+pub(all) struct FileResult {
+  path : String
+  status : String
+  reason : String?
+  sha256 : String?
+  bytes : Int32
+  findings : Array[Finding]
+  review : Array[String]
+}
+
+#derive(Eq, @json.FromJson, @json.ToJson)
+pub(all) struct Finding {
+  id : String
+  expression : String
+  kind : String
+  scope : String
+  rule_id : String
+  start_line : Int32
+  end_line : Int32
+  evidence_sha256 : String
+}
+
+#derive(@json.ToJson)
+pub(all) struct Preview {
+  path : String
+  start_line : Int32
+  end_line : Int32
+  text : String
+}
+
+#derive(Eq, @json.FromJson, @json.ToJson)
+pub(all) struct Report {
+  schema_version : Int32
+  rules_version : String
+  directory : Bool
+  options : ScanOptions
+  enumeration_complete : Bool
+  entries : Int32
+  bytes_read : Int32
+  files : Array[FileResult]
+  diagnostics : Array[String]
+}
+
+#derive(Eq, @json.FromJson, @json.ToJson)
+pub(all) struct ScanOptions {
+  max_file_bytes : Int32
+  max_total_bytes : Int32
+  max_entries : Int32
+  max_findings : Int32
+  exclude : Array[String]
+}
+pub fn ScanOptions::default() -> Self
+pub fn ScanOptions::parse_options(@json.Json) -> Self raise ScanError
+
+pub struct Scanner {
+  // private fields
+}
+pub fn Scanner::new() -> Self
+pub fn Scanner::notice(Self, String, Report) -> @json.Json raise
+pub fn Scanner::preview(Self, String, Report, String) -> Preview raise
+pub fn Scanner::scan(Self, String, options? : ScanOptions) -> Report raise
+
+pub struct Session {
+  // private fields
+}
+pub fn Session::close(Self) -> Unit
+pub fn Session::compare(Self, Report) -> @json.Json raise
+pub fn Session::notice(Self) -> @json.Json raise
+pub fn Session::open(String) -> Self raise
+pub fn Session::preview(Self, String) -> Preview raise
+pub fn Session::report(Self) -> Report raise ScanError
+pub fn Session::scan(Self, options? : ScanOptions) -> Report raise
+
+// Type aliases
+
+// Traits

@@ -1,0 +1,9 @@
+import {
+  "Delthin/moon_license_scan" @scan,
+  "moonbitlang/async/stdio",
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+}
+
+supported_targets = "native"
