@@ -4,6 +4,8 @@ version = "1.0.0"
 
 readme = "README.md"
 
+repository = "https://github.com/Delthin/moon-license-scan"
+
 license = "Apache-2.0"
 
 keywords = [ "license", "spdx", "scanner", "native" ]
