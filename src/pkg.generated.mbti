@@ -7,7 +7,7 @@ import {
 }
 
 // Values
-pub const VERSION : String = "1.0.0"
+pub const VERSION : String = "0.1.0"
 
 pub fn compare(Report, Report) -> @json.Json
 
