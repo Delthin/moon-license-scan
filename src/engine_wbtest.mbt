@@ -56,6 +56,29 @@ async test "UTF-8 BOM preserves first-line SPDX evidence across CRLF releases" {
 }
 
 ///|
+async test "an exact total byte budget retains complete license evidence" {
+  let fixture = @test_fs.tmpdir(prefix="moon-license-budget")
+  defer @test_fs.rmdir(fixture, recursive=true)
+  let path = fixture + "/unit.c"
+  let bytes = b"// SPDX-License-Identifier: MIT\n"
+  @test_fs.write_binary(path, bytes)
+  let scanner = Scanner::new()
+  let options = { ..ScanOptions::default(), max_total_bytes: bytes.length(), }
+  let exact = scanner.scan(path, options~)
+  assert_eq(exact.bytes_read, bytes.length())
+  guard exact.files is [{ findings: [{ expression: "MIT", .. }], .. }] else {
+    fail("a complete file exactly at the total budget must be scanned")
+  }
+  let cap = bytes.length() - 1
+  let shorter = scanner.scan(path, options={ ..options, max_total_bytes: cap, })
+  assert_eq(shorter.bytes_read, cap)
+  guard shorter.files
+    is [{ findings: [], reason: Some("total_byte_limit"), .. }] else {
+    fail("a truncated file may not produce findings")
+  }
+}
+
+///|
 test "rules retain independent body and explicit evidence and stable IDs" {
   let scanner = Scanner::new()
   guard scanner.rules

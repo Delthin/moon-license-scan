@@ -32,6 +32,10 @@ extern "c" fn native_file_error(file : NativeFile) -> Int32 = "moon_ls_file_erro
 extern "c" fn native_close(file : NativeFile) -> Unit = "moon_ls_close"
 
 ///|
+#borrow(file)
+extern "c" fn native_size(file : NativeFile) -> Int64 = "moon_ls_size"
+
+///|
 #borrow(file, buffer)
 extern "c" fn native_read(
   file : NativeFile,

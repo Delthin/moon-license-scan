@@ -21,7 +21,18 @@ priv suberror LocalError {
   ClosedRoot
   NotDirectory
   Filesystem(String, Int32)
-} derive(Show)
+}
+
+///|
+impl Show for LocalError with fn to_string(self) {
+  match self {
+    InvalidPath(_) => "invalid filesystem path"
+    InvalidLimit => "invalid filesystem limit"
+    ClosedRoot => "scan root is closed"
+    NotDirectory => "scan root is not a directory"
+    Filesystem(operation, code) => "\{operation} failed (OS code \{code})"
+  }
+}
 
 ///|
 fn encode_path(path : StringView) -> Bytes raise {
@@ -236,7 +247,34 @@ pub fn Root::read(
   }
   let file = self.resolve(relative_file, false)
   defer (if self.directory { native_close(file) })
-  let limit = max_bytes + 1
+  read_prefix(file, max_bytes + 1)
+}
+
+///|
+/// Read at most max_bytes and report completeness without spending a probe byte.
+pub fn Root::read_with_limit(
+  self : Root,
+  relative_file : String,
+  max_bytes : Int32,
+) -> (Bytes, Bool) raise {
+  if max_bytes < 0 {
+    raise InvalidLimit
+  }
+  let file = self.resolve(relative_file, false)
+  defer (if self.directory { native_close(file) })
+  let raw = read_prefix(file, max_bytes)
+  if raw.length() < max_bytes {
+    return (raw, true)
+  }
+  let size = native_size(file)
+  if size < 0L {
+    raise Filesystem("get file size", native_file_error(file))
+  }
+  (raw, size == max_bytes.to_int64())
+}
+
+///|
+fn read_prefix(file : NativeFile, limit : Int32) -> Bytes raise {
   let chunk = FixedArray::make(@cmp.minimum(limit, 8192), b'\x00')
   let bytes = @buffer.Buffer()
   for offset = 0; offset < limit; {

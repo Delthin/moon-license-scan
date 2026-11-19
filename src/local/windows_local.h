@@ -146,6 +146,15 @@ static native_handle native_open_child(native_handle parent, const char *name,
   return inspect_handle(file, kind, &actual, error);
 }
 
+static int64_t native_size(native_handle file, int32_t *error) {
+  LARGE_INTEGER size;
+  if (!GetFileSizeEx(file, &size)) {
+    *error = (int32_t)GetLastError();
+    return -1;
+  }
+  return size.QuadPart;
+}
+
 static int32_t native_read(native_handle file, int32_t offset, uint8_t *buffer,
                            int32_t limit, int32_t *error) {
   OVERLAPPED position = { 0 };
@@ -173,10 +182,15 @@ typedef struct {
 static void native_cursor_open(native_handle parent, native_cursor *cursor, int32_t *error) {
   cursor->offset = sizeof(cursor->buffer.bytes);
   cursor->restart = TRUE;
-  cursor->handle = ReOpenFile(parent, FILE_LIST_DIRECTORY | FILE_READ_ATTRIBUTES, share,
-                              FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT);
-  enum kind kind;
-  cursor->handle = inspect_handle(cursor->handle, DIRECTORY, &kind, error);
+  // Keep the same authorized directory without requiring a new open. Root::list
+  // consumes the cursor synchronously, restarting enumeration on each call.
+  cursor->handle = INVALID_HANDLE;
+  HANDLE process = GetCurrentProcess();
+  if (!DuplicateHandle(process, parent, process, &cursor->handle, 0, FALSE,
+                       DUPLICATE_SAME_ACCESS)) {
+    *error = (int32_t)GetLastError();
+    cursor->handle = INVALID_HANDLE;
+  }
 }
 
 static void native_cursor_close(native_cursor *cursor) {

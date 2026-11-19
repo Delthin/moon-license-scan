@@ -168,22 +168,30 @@ fn Scanner::scan_at(
     } else if findings >= options.max_findings {
       skipped(path, "finding_limit")
     } else {
-      // Leave one byte inside the global I/O allowance to detect truncation.
       let remaining = options.max_total_bytes - bytes_read
-      let cap = options.max_file_bytes.min(remaining - 1)
-      let data = Some(boundary.read(path, cap)) catch { _ => None }
+      let total_bound = remaining <= options.max_file_bytes
+      let data = Some(
+        if total_bound {
+          boundary.read_with_limit(path, remaining)
+        } else {
+          let raw = boundary.read(path, options.max_file_bytes)
+          (raw, raw.length() <= options.max_file_bytes)
+        },
+      ) catch {
+        _ => None
+      }
       match data {
         None => skipped(path, "read_failed")
-        Some(raw) => {
+        Some((raw, complete)) => {
           let bytes = raw.length()
           bytes_read += bytes
-          if bytes > cap {
+          if !complete {
             skipped(
               path,
-              if cap == options.max_file_bytes {
-                "file_byte_limit"
-              } else {
+              if total_bound {
                 "total_byte_limit"
+              } else {
+                "file_byte_limit"
               },
               bytes~,
             )

@@ -77,6 +77,11 @@ MOONBIT_FFI_EXPORT int32_t moon_ls_file_error(const void *ptr) {
   return ((const local_file *)ptr)->error;
 }
 
+MOONBIT_FFI_EXPORT int64_t moon_ls_size(void *ptr) {
+  local_file *file = ptr;
+  return native_size(file->handle, &file->error);
+}
+
 MOONBIT_FFI_EXPORT int32_t moon_ls_read(void *ptr, int32_t offset, uint8_t *buffer, int32_t limit) {
   local_file *file = ptr;
   return native_read(file->handle, offset, buffer, limit, &file->error);

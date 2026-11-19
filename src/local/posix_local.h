@@ -92,6 +92,15 @@ static native_handle native_open_child(native_handle parent, const char *name,
   return open_item(parent, name, kind, &actual, error);
 }
 
+static int64_t native_size(native_handle file, int32_t *error) {
+  struct stat info;
+  if (fstat(file, &info) == -1) {
+    *error = errno;
+    return -1;
+  }
+  return (int64_t)info.st_size;
+}
+
 static int32_t native_read(native_handle file, int32_t offset, uint8_t *buffer,
                            int32_t limit, int32_t *error) {
   ssize_t count;
