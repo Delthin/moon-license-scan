@@ -161,6 +161,7 @@ async fn verify_mcp(
 async fn verify_web(
   bin : String,
   root : String,
+  previous : Json,
   now : Json,
   id : String,
 ) -> Unit {
@@ -211,9 +212,45 @@ async fn verify_web(
         is { "path": "vendor/example.c", "start_line": Number(4.0, ..), .. } else {
         fail("Web preview did not return the reported vendor evidence")
       }
+      guard post("/api/compare", { "previous": previous })
+        is {
+          "status": "comparable",
+          "added": [
+            {
+              "path": "vendor/example.c",
+              "finding": { "expression": "BSD-3-Clause", .. },
+              ..
+            },
+          ],
+          "removed": [],
+          ..
+        } else {
+        fail("Web comparison did not report the added vendor license")
+      }
+      let notice = post("/api/notice", {})
+      guard notice is { "entries": Array(entries), "review": [], .. } &&
+        entries.length() == 2 &&
+        entries.any(entry => {
+          entry
+          is {
+            "text": String(text),
+            "sources": [
+              { "path": "vendor/example.c", "id": String(source_id), .. },
+            ],
+            ..
+          } &&
+          source_id == id &&
+          text.contains("Copyright (c) 2026 Example Vendor Team")
+        }) else {
+        fail(
+          "Web notice candidates did not retain the vendor attribution and evidence ID",
+        )
+      }
     })
   })
-  println("PASS: Web review page, CLI report parity, and evidence preview")
+  println(
+    "PASS: Web review page, CLI report parity, evidence, comparison, and notice",
+  )
 }
 
 ///|
@@ -239,5 +276,5 @@ async fn main {
     fail("CLI did not discover the untagged vendor notice")
   }
   verify_mcp(bin, root, previous, now, id)
-  verify_web(bin, root, now, id)
+  verify_web(bin, root, previous, now, id)
 }
