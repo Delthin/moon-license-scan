@@ -22,6 +22,7 @@ pub fn Root::is_directory(Self) -> Bool
 pub fn Root::list(Self, String, Int32) -> (Array[Entry], Bool) raise
 pub fn Root::open(String) -> Self raise
 pub fn Root::read(Self, String, Int32) -> Bytes raise
+pub fn Root::read_with_limit(Self, String, Int32) -> (Bytes, Bool) raise
 
 // Type aliases
 

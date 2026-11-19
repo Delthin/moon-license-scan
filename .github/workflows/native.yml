@@ -38,6 +38,11 @@ jobs:
       - run: moon version --all
       - run: moon update
       - run: moon check --target native
+      - name: Check generated MoonBit interfaces
+        if: runner.os == 'Linux'
+        run: |
+          moon info --target native
+          git diff --exit-code -- ':(glob)**/pkg.generated.mbti'
       - run: moon test --target native
       - run: moon run --target native scripts/package.mbtx -- dist ${{ matrix.platform }}
       - name: Verify MCP integration
