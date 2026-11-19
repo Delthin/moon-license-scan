@@ -8,14 +8,22 @@ import {
 
 ///|
 async fn main {
-  guard @process.run("moon", ["package"]) == 0 else {
-    fail("Mooncakes package failed")
-  }
-  let archive = @fs.realpath(
-    "_build/publish/Delthin-moon_license_scan-0.1.1.zip",
-  )
   let temp = @fs.tmpdir(prefix="moon-license-scan-sdk-")
   defer @fs.rmdir(temp, recursive=true)
+  let target = temp + "/build"
+  guard @process.run("moon", ["package", "--target-dir", target]) == 0 else {
+    fail("Mooncakes package failed")
+  }
+  let publish = target + "/publish"
+  let prefix = "Delthin-moon_license_scan-"
+  guard @fs.readdir(publish) is [name] &&
+    name.has_prefix(prefix) &&
+    name.has_suffix(".zip") &&
+    name.length() > prefix.length() + 4 else {
+    fail("Expected exactly one new Mooncakes archive")
+  }
+  let version = name[prefix.length():name.length() - 4]
+  let archive = publish + "/" + name
   @fs.mkdir(temp + "/source")
   guard @process.run("unzip", ["-q", archive, "-d", temp + "/source"]) == 0 else {
     fail("SDK extraction failed")
@@ -28,8 +36,8 @@ async fn main {
       #|name = "smoke/independent"
       #|source = "src"
       #|preferred_target = "native"
-      #|import { "Delthin/moon_license_scan@0.1.1" }
-    ),
+    ) +
+    "\nimport { \"Delthin/moon_license_scan@\{version}\" }\n",
     create_mode=CreateNew,
   )
   @fs.write_file(
@@ -65,7 +73,8 @@ async fn main {
     0 else {
     fail("Independent SDK consumer failed")
   }
-  println(
-    "PASS: independent native project scanned with the extracted Mooncakes SDK",
-  )
+  let output = "_build/verified-sdk"
+  @fs.mkdir(output, recursive=true, allow_exist=true)
+  @fs.write_file(output + "/" + name, @fs.read_file(archive))
+  println("PASS: independent native project verified \{name}")
 }

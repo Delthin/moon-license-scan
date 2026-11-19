@@ -50,6 +50,8 @@ async test "bounded lists and anchored reads" {
   @test_fs.write_binary(fixture + "/scan/sub/café.txt", b"replacement")
   assert_eq(single.read("café.txt", 2), b"012")
   assert_rejected(() => ignore(single.read("original", 2)))
+  // Windows does not allow the parent directory to move with this child open.
+  single.close()
 
   @test_fs.rename(fixture + "/scan", fixture + "/original-scan")
   @test_fs.mkdir(fixture + "/scan/sub", recursive=true)

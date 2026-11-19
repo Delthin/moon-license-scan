@@ -266,11 +266,8 @@ pub fn Root::read_with_limit(
   if raw.length() < max_bytes {
     return (raw, true)
   }
-  let size = native_size(file)
-  if size < 0L {
-    raise Filesystem("get file size", native_file_error(file))
-  }
-  (raw, size == max_bytes.to_int64())
+  // If the size cannot be confirmed, count the bytes and treat the read as incomplete.
+  (raw, native_size(file) == max_bytes.to_int64())
 }
 
 ///|
