@@ -1,96 +1,135 @@
-# moon-license-scan
+# Moon License Scan
 
-`moon-license-scan` 用于发布前复查源码目录中的许可证。它会逐文件识别 SPDX 声明、已覆盖的许可证正文和特征片段，给出文件、原始行号和规则；即使第三方源码没有 SPDX 标签，也能从匹配到的正文找到许可依据。扫描在本机离线完成，使用 MoonBit native 实现，运行时无需安装 Python 或 Node.js。
+[English](https://github.com/Delthin/moon-license-scan/blob/main/README.en.md)
+
+Moon License Scan 用于在发布前复查源码和随包分发的第三方文件。它逐文件找出 SPDX 声明与许可证正文，给出可回查的原文行号，再比较新旧版本，生成带来源的版权与许可声明候选。工具基于 MoonBit `native` 构建，扫描在本机离线完成，无需安装 Python、Node.js 或 ScanCode。可通过 CLI、MoonBit SDK、MCP（Model Context Protocol）或本地 Web 工作台使用。
 
 ## 核心功能
 
-- **逐文件取证**：分别报告显式声明和文本命中。打开证据时重新核对文件内容，确保看到的是扫描时对应的原文。
-- **比较两个发布版本**：读取两份 JSON 报告，列出新增、移除和变化的证据；如果有未扫描文件或比较范围不同，也会标出缺口。
-- **生成发布声明候选**：从当前版本中提取经核对的许可证原文和版权署名，保留来源路径和行号，并单列待人工复核的条目。
+- **逐文件识别。** 内置 127 条文本检测规则，覆盖 81 个 SPDX 许可证标识和两个自定义引用：`LicenseRef-scancode-rsa-md4` 与 `LicenseRef-scancode-unicode-mappings`。报告区分正文和片段；无法区分许可证的共有条款会进入待复核项。显式 SPDX 声明按 SPDX License List 3.29.0 的 740 个许可证标识和 86 个例外标识校验，支持 `AND`、`OR`、`WITH` 和括号。未知或无效声明不产生有效证据；弃用标识与未解析的自定义引用会标记复核。
+- **原文回查。** 扫描报告记录根目录相对路径、文件 SHA-256、行号和证据元数据，不保存绝对路径或原文。执行 `preview` 时，工具重新核验文件摘要和证据，再返回相应行；源文件改变后须重新扫描。
+- **版本比较。** `compare` 比对两份 JSON 快照，列出新增、移除和变化的证据。无法确认扫描覆盖的相关路径单列到 `not_comparable`，避免把因排除、限额或不可读而缺失的证据当成许可证消失。请用同一版本和相同设置扫描两个目录。
+- **发布声明候选。** `notice` 提取经核验的许可证正文和版权署名，对相同文本去重，并保留各自的文件和行号。只有片段、找不到完整署名或存在冲突的文件进入 `review`，由发布人员核对。
+- **本地扫描边界。** 工具以只读方式在指定目录中扫描普通文件，不跟随符号链接或 Windows 目录联接点。支持 UTF-8 和带 BOM 的 UTF-16 LE/BE，跳过二进制文件，记录无法读取、解码或完整扫描的文件。
 
-## 安装
+## 安装与构建
 
-### 使用预编译包
-
-从 [GitHub Release v1.0.0](https://github.com/Delthin/moon-license-scan/releases/tag/v1.0.0) 下载对应平台的 `.tar.gz`：`moon-license-scan-macos-arm64`、`moon-license-scan-linux-x64` 或 `moon-license-scan-windows-x64`。用同页的 `SHA256SUMS` 校验归档，解压后将其中的 `bin/` 加入 `PATH`，或在解压目录直接运行：
+从 [GitHub Releases](https://github.com/Delthin/moon-license-scan/releases/tag/v1.0.0) 选择 macOS ARM64、Linux x64 或 Windows x64 的 `.tar.gz`，按同页的 `SHA256SUMS` 校验后解压。将解压后的 `bin/` 加入 `PATH`，或直接运行其中的可执行文件。
 
 ```sh
 # macOS / Linux
 ./bin/moon-license-scan --version
-./bin/moon-license-scan scan examples/release-after
 ```
 
 ```powershell
 # Windows PowerShell
 .\bin\moon-license-scan.exe --version
-.\bin\moon-license-scan.exe scan examples/release-after
 ```
 
-### 从源码运行
-
-源码构建需要 [MoonBit](https://www.moonbitlang.com/download/)（CI 使用 `0.10.21+06da1ed44`）和平台 C 工具链。在仓库根目录运行：
+从源码构建需要 [MoonBit](https://www.moonbitlang.com/download/) 和平台 C 工具链。CI 使用 `0.10.21+06da1ed44`；在仓库根目录运行：
 
 ```sh
 moon update
-moon run src/cmd/moon-license-scan --target native --release -- scan examples/release-after
+moon check --target native
+moon test --target native
+moon build --target native --release
 ```
 
-如需生成可执行文件，运行 `moon build --target native --release`，产物位于 `_build/native/release/build/cmd/moon-license-scan/moon-license-scan.exe`。
+可执行文件位于 `_build/native/release/build/cmd/moon-license-scan/moon-license-scan.exe`。
 
-## 快速上手：复查两个发布版本
+## CLI 快速上手
 
-在源码或安装包根目录运行以下命令。如果没有将程序加入 `PATH`，请用可执行文件的实际路径替换命令名。两个示例都采用 MIT 许可；新版新增了一个含 BSD-3-Clause 正文、没有 SPDX 标签的[第三方源码文件](examples/release-after/vendor/example.c)。
+在源码或预编译包根目录运行以下命令；如果没有设置 `PATH`，请改用可执行文件的路径。新版示例新增了一个[未标注 SPDX 的第三方文件](examples/release-after/vendor/example.c)。
 
 ```sh
-moon-license-scan scan examples/release-before --json --output previous.json
-moon-license-scan scan examples/release-after --json --output current.json
-moon-license-scan compare previous.json current.json
-moon-license-scan notice examples/release-after current.json
+moon-license-scan scan examples/release-after
+moon-license-scan scan examples/release-before --json --output before.json
+moon-license-scan scan examples/release-after --json --output after.json
+moon-license-scan compare before.json after.json
+moon-license-scan notice examples/release-after after.json
 ```
 
-对比会列出新增文件中的 BSD-3-Clause 证据（第 4–28 行）。从当前报告复制该条证据的 `id`，替换下方的 `EVIDENCE_ID`，即可查看原文。如果源文件已修改，先重新扫描再回查。
+比较结果会列出新增的 BSD-3-Clause 证据（第 4–28 行）。将 `after.json` 中这条记录的 `id` 替换到下方的 `EVIDENCE_ID`，即可回读原文。
 
 ```sh
-moon-license-scan preview examples/release-after current.json EVIDENCE_ID
+moon-license-scan preview examples/release-after after.json EVIDENCE_ID
 ```
 
-`scan` 支持单个文件，也可不加 `--json`，直接在终端查看结果。`--exclude vendor/unused` 排除相对扫描根的路径及其子项，可重复传入。扫描默认排除 `.git`，但仍读取未跟踪及被 Git 忽略的普通文件。用同一工具版本、排除项和限额扫描两个发布目录，有助于区分实际变化和覆盖范围差异。`--output` 只创建新文件；更多扫描选项见 `--help`。
+| 扫描参数 | 用途 | 默认值 |
+| --- | --- | --- |
+| `--json` | 输出 JSON 报告，供比较、预览和生成声明候选 | 文本摘要 |
+| `--output FILE` | 写入新文件，拒绝覆盖 | 标准输出 |
+| `--exclude PATH` | 追加相对根目录的排除前缀，可重复指定 | 排除 `.git` |
+| `--max-file-bytes N` | 单个文件读取上限 | 2 MiB |
+| `--max-total-bytes N` | 一次扫描累计读取上限 | 64 MiB |
+| `--max-entries N` | 文件系统条目上限 | 12,000 |
+| `--max-findings N` | 证据条数上限 | 4,000 |
 
-## 浏览器工作台、HTTP 与 MCP
-
-```sh
-moon-license-scan serve examples/release-after
-```
-
-打开命令打印的本机地址。在 **Scan scope and limits** 中可以设置排除项和扫描上限，然后点击 **Scan authorized directory**。打开命中记录可核对原文，导入上一个版本的 JSON 报告可生成对比，也可下载发布声明候选。工作台只在本机监听；要换扫描目录，请用新的路径重新启动。
-
-HTTP 客户端使用命令打印的地址，以 `application/json` 发送 POST 并接收 JSON。扫描设置可通过 `options` 传入，例如 `{"options":{"exclude":[".git","vendor/unused"],"max_total_bytes":1048576}}`。显式提供的 `exclude` 会替换默认列表。`/api/scan` 响应中的 `X-Scan-Revision` 标识当前快照；后续请求带上同名请求头，可防止另一个客户端重新扫描后误用其报告。快照已切换时，服务返回 `409 Conflict`，客户端可重新扫描后再操作。
-
-| 路径 | 请求体 |
-| --- | --- |
-| `/api/scan` | `{}`，或传入 `options` |
-| `/api/preview` | `{"id":"EVIDENCE_ID"}`，使用当前报告中的证据 ID |
-| `/api/compare` | `{"previous":{...}}`，放入上一个版本的完整报告对象 |
-| `/api/notice` | `{}`，基于当前报告生成候选 |
-
-在 MCP 客户端中添加本地 stdio 服务：命令填写 `moon-license-scan`，参数填写 `["mcp", "/absolute/path/to/release"]`。所有工具都使用启动时指定的目录。`license_scan` 返回第一页；如有 `next_offset`，传给 `license_report` 继续读取。用 `license_preview` 回查当前证据，用 `license_compare` 导入旧报告对象，用 `license_notice` 生成声明候选。协议版本支持 `2025-11-25` 和 `2025-06-18`。
+`scan` 接受目录或单个文件。它扫描发布目录里的实际内容，因此也会读取未跟踪或被 Git 忽略的普通文件。
 
 ## MoonBit SDK
 
-从 [GitHub Release v1.0.0](https://github.com/Delthin/moon-license-scan/releases/tag/v1.0.0) 下载 `Delthin-moon_license_scan-1.0.0.zip`，将源码 ZIP 解压到调用项目旁边。按解包后的模块版本在项目的 `moon.mod` 中声明依赖（例如 `import { "Delthin/moon_license_scan@1.0.0" }`）。在共同的上一级目录运行 `moon work init my-app moon-license-sdk`，其中两个参数替换成实际目录名；然后在调用包的 `moon.pkg` 中导入 `"Delthin/moon_license_scan" @scan`，并用 `--target native` 构建。
+在项目的 `moon.mod` 中添加 [Mooncakes SDK 0.1.0](https://mooncakes.io/docs/Delthin/moon_license_scan@0.1.0) 依赖，在调用包的 `moon.pkg` 中导入扫描器，再在项目根目录运行 `moon update`。将 `path/to/release` 换成要扫描的目录。示例入口位于项目根目录时，用 `moon run --target native .` 运行；若入口位于 `src/`，把 `.` 换成 `src`。CLI 发行版 `v1.0.0` 和 Mooncakes SDK `0.1.0` 是各自发布渠道的版本。
 
 ```moonbit
-fn scan_release(root : String) -> @scan.Report raise {
-  let scanner = @scan.Scanner::new()
-  scanner.scan(root)
+// moon.mod
+import { "Delthin/moon_license_scan@0.1.0" }
+```
+
+```moonbit
+// moon.pkg
+import { "Delthin/moon_license_scan" @scan }
+pkgtype(kind: "executable")
+```
+
+```moonbit
+fn main {
+  let report = @scan.Scanner::new().scan("path/to/release") catch {
+    err => abort("scan failed: \{err}")
+  }
+  for file in report.files {
+    for hit in file.findings {
+      println("\{file.path}:\{hit.start_line}-\{hit.end_line} \{hit.expression}")
+    }
+  }
 }
 ```
 
-`Scanner` 可复用，也提供 `preview` 和 `notice`。用 `parse_report` 校验保存的 JSON，再用 `compare` 对比两份报告。需要固定只读扫描根并在多次操作间保留最新报告时，使用 `Session`，用完后调用 `close`。完整接口见[公开 API](src/pkg.generated.mbti)。
+可以复用 `Scanner`，或用 `Session::open` 固定扫描目录、保留当前报告，完成预览、比较和声明导出后调用 `close`。完整接口见[公开 API](src/pkg.generated.mbti)。如需从本地源码包导入，请下载 GitHub Release 中的 `Delthin-moon_license_scan-1.0.0.zip`，依赖版本改用 `1.0.0`，在调用项目和解压目录的共同父目录运行 `moon work init my-app moon-license-sdk`，将两个参数替换为实际目录名。
 
-## 扫描范围、来源与许可
+## MCP 服务端
 
-- **扫描边界**：只读扫描普通文件，支持 UTF-8 和带 BOM 的 UTF-16，不跟随符号链接。超限、不可读、无法解码的文件会标明原因。比较旧版本时，请用同一版工具重扫两个目录，以免把规则更新误判为许可变化。
-- **证据复核**：正文和片段覆盖范围见[规则说明](docs/rules.md)。缺少文本证据时，请查看源文件或上游许可文件；只有片段、声明冲突或缺少署名时，工具会提示待核对。
-- **SPDX 声明**：使用 SPDX License List 3.29.0 检查许可证和例外标识。未知标识不会作为有效声明；已弃用标识和项目自定义的 `LicenseRef` 会保留在报告中，并标记待核对。
-- **来源与许可**：本软件采用 [Apache-2.0](LICENSE)。正文和片段选自 [ScanCode Toolkit v32.5.0](https://github.com/aboutcode-org/scancode-toolkit/tree/v32.5.0)，按 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) 授权。对应选段见[规则来源清单](rule-sources/selection.tsv)，标识数据见 [SPDX 数据来源](spdx-sources/README.md)，署名见[许可声明](NOTICE)。
+在支持 MCP 的客户端中登记下列本地标准输入输出命令，目录参数替换为要扫描的绝对路径。服务支持 `2025-11-25` 和 `2025-06-18` 两个协议版本，所有操作都以启动目录为边界。
+
+```sh
+moon-license-scan mcp /path/to/release
+```
+
+| 工具 | 用途 |
+| --- | --- |
+| `license_scan` | 扫描启动目录，返回第一页，可传 `options` |
+| `license_report` | 用 `next_offset` 作为 `offset` 读取下一页，`limit` 为 1–50 |
+| `license_preview` | 用 64 个十六进制字符组成的证据 `id` 回读原文 |
+| `license_compare` | 用 `previous` 传入上一个版本的完整报告对象 |
+| `license_notice` | 导出当前快照的声明候选与待复核项 |
+
+## 本地 Web 复核工作台
+
+```sh
+moon-license-scan serve examples/release-after --port 0
+```
+
+打开终端打印的 `127.0.0.1` 地址。通过 **Scan scope and limits** 设置排除前缀和限额，再点击 **Scan authorized directory**；可以筛选文件、展开证据、导入旧报告比较并下载 JSON。端口 `0` 会自动选择可用端口；更换扫描目录时重启服务。
+
+HTTP 客户端向同一地址以 `application/json` 发送 POST。扫描响应带有 `X-Scan-Revision`，将它作为后续请求的同名请求头，可避免另一客户端重扫后误用新快照；收到 `409 Conflict` 时先重扫。
+
+| 路径 | 请求体 |
+| --- | --- |
+| `/api/scan` | `{}` 或 `{"options":{"exclude":[".git","vendor/unused"]}}`；显式 `exclude` 替换默认列表 |
+| `/api/preview` | `{"id":"EVIDENCE_ID"}` |
+| `/api/compare` | `{"previous":{...}}`，传入旧版完整报告对象 |
+| `/api/notice` | `{}` |
+
+## 规则来源与许可证
+
+本项目代码使用 [Apache-2.0](LICENSE)。文本规则选自 [ScanCode Toolkit v32.5.0](https://github.com/aboutcode-org/scancode-toolkit/tree/v32.5.0) 的 CC BY 4.0 规则数据；SPDX 标识和弃用标记来自采用 Apache-2.0 许可的 [EmbarkStudios/spdx 0.13.6](https://github.com/EmbarkStudios/spdx/blob/0ca398c29698ee46c9d2497569817aebde53feaf/src/identifiers.rs)。规则覆盖、生成方式和归因见[规则说明](docs/rules.md)、[规则来源清单](rule-sources/selection.tsv)、[SPDX 数据来源](spdx-sources/README.md)及 [NOTICE](NOTICE)。
