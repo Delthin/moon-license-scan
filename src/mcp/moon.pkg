@@ -3,7 +3,11 @@ import {
   "moonbitlang/async/stdio",
   "moonbitlang/core/buffer",
   "moonbitlang/core/encoding/utf8",
-  "moonbitlang/core/json",
+  "Delthin/moon_license_scan/internal/bounded_json",
 }
+
+import {
+  "moonbitlang/core/json",
+} for "wbtest"
 
 supported_targets = "native"

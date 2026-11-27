@@ -14,7 +14,7 @@ Moon License Scan 用于在发布前复查源码和随包分发的第三方文�
 
 ## 安装与构建
 
-从 [GitHub Releases](https://github.com/Delthin/moon-license-scan/releases/tag/v1.0.0) 选择 macOS ARM64、Linux x64 或 Windows x64 的 `.tar.gz`，按同页的 `SHA256SUMS` 校验后解压。将解压后的 `bin/` 加入 `PATH`，或直接运行其中的可执行文件。
+从 [GitHub Releases](https://github.com/Delthin/moon-license-scan/releases/tag/v1.0.1) 选择 macOS ARM64、Linux x64 或 Windows x64 的 `.tar.gz`，按同页的 `SHA256SUMS` 校验后解压。将解压后的 `bin/` 加入 `PATH`，或直接运行其中的可执行文件。
 
 ```sh
 # macOS / Linux
@@ -26,7 +26,7 @@ Moon License Scan 用于在发布前复查源码和随包分发的第三方文�
 .\bin\moon-license-scan.exe --version
 ```
 
-从源码构建需要 [MoonBit](https://www.moonbitlang.com/download/) 和平台 C 工具链。CI 使用 `0.10.21+06da1ed44`；在仓库根目录运行：
+从源码构建需要 [MoonBit](https://www.moonbitlang.com/download/) 和平台 C 工具链。CI 使用 `1.0.0-rc1+3c0520448`；在仓库根目录运行：
 
 ```sh
 moon update
@@ -69,11 +69,11 @@ moon-license-scan preview examples/release-after after.json EVIDENCE_ID
 
 ## MoonBit SDK
 
-在项目的 `moon.mod` 中添加 [Mooncakes SDK 0.1.0](https://mooncakes.io/docs/Delthin/moon_license_scan@0.1.0) 依赖，在调用包的 `moon.pkg` 中导入扫描器，再在项目根目录运行 `moon update`。将 `path/to/release` 换成要扫描的目录。示例入口位于项目根目录时，用 `moon run --target native .` 运行；若入口位于 `src/`，把 `.` 换成 `src`。CLI 发行版 `v1.0.0` 和 Mooncakes SDK `0.1.0` 是各自发布渠道的版本。
+在项目的 `moon.mod` 中添加 [Mooncakes SDK 0.1.1](https://mooncakes.io/docs/Delthin/moon_license_scan@0.1.1) 依赖，在调用包的 `moon.pkg` 中导入扫描器，再在项目根目录运行 `moon update`。将 `path/to/release` 换成要扫描的目录。示例入口位于项目根目录时，用 `moon run --target native .` 运行；若入口位于 `src/`，把 `.` 换成 `src`。CLI 发行版 `v1.0.1` 和 Mooncakes SDK `0.1.1` 是各自发布渠道的版本。
 
 ```moonbit
 // moon.mod
-import { "Delthin/moon_license_scan@0.1.0" }
+import { "Delthin/moon_license_scan@0.1.1" }
 ```
 
 ```moonbit
@@ -95,7 +95,7 @@ fn main {
 }
 ```
 
-可以复用 `Scanner`，或用 `Session::open` 固定扫描目录、保留当前报告，完成预览、比较和声明导出后调用 `close`。完整接口见[公开 API](src/pkg.generated.mbti)。如需从本地源码包导入，请下载 GitHub Release 中的 `Delthin-moon_license_scan-1.0.0.zip`，依赖版本改用 `1.0.0`，在调用项目和解压目录的共同父目录运行 `moon work init my-app moon-license-sdk`，将两个参数替换为实际目录名。
+可以复用 `Scanner`，或用 `Session::open` 固定扫描目录、保留当前报告，完成预览、比较和声明导出后调用 `close`。完整接口见[公开 API](src/pkg.generated.mbti)。如需从本地源码包导入，请下载 GitHub Release 中的 `Delthin-moon_license_scan-1.0.1.zip`，依赖版本改用 `1.0.1`，在调用项目和解压目录的共同父目录运行 `moon work init my-app moon-license-sdk`，将两个参数替换为实际目录名。
 
 ## MCP 服务端
 

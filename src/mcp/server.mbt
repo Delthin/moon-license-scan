@@ -394,14 +394,7 @@ pub async fn serve(root : String) -> Unit {
       OverLimit =>
         Some(failure(Json::null(), -32600, "Message exceeds input limit"))
       Message(bytes) =>
-        server.dispatch(
-          @json.parse(
-            @utf8.decode(bytes[:]),
-            reject_duplicate_keys=true,
-            max_nesting_depth=17,
-            preserve_number_repr=true,
-          ),
-        ) catch {
+        server.dispatch(@bounded_json.parse(@utf8.decode(bytes[:])[:], 17)) catch {
           _ => Some(failure(Json::null(), -32700, "Invalid JSON"))
         }
     }

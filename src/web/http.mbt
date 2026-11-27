@@ -174,12 +174,7 @@ async fn read_json(conn : @socket.Tcp, prefix : Bytes, length : Int32) -> Json {
     prefix + tail
   }
   let text = @utf8.decode(bytes[:]) catch { _ => raise BadRequest }
-  @json.parse(
-    text[:],
-    max_nesting_depth=17,
-    reject_duplicate_keys=true,
-    preserve_number_repr=true,
-  ) catch {
+  @bounded_json.parse(text[:], 17) catch {
     _ => raise BadRequest
   }
 }

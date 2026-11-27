@@ -168,12 +168,7 @@ pub fn parse_report(text : String) -> Report raise {
     @utf8.encode(text[:]).length() > report_limit {
     raise LimitExceeded("report exceeds 16 MiB")
   }
-  let json = @json.parse(
-    text[:],
-    max_nesting_depth=16,
-    reject_duplicate_keys=true,
-    preserve_number_repr=true,
-  ) catch {
+  let json = @bounded_json.parse(text[:], 16) catch {
     _ => raise InvalidInput("invalid report JSON")
   }
   report_integers(json)

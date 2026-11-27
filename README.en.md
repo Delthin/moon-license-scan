@@ -14,7 +14,7 @@ Moon License Scan helps release teams review licenses in source trees and bundle
 
 ## Installation and build
 
-Download the macOS ARM64, Linux x64, or Windows x64 `.tar.gz` from [GitHub Releases](https://github.com/Delthin/moon-license-scan/releases/tag/v1.0.0). Verify it against `SHA256SUMS` on the same page, extract it, then add `bin/` to `PATH` or invoke the executable directly.
+Download the macOS ARM64, Linux x64, or Windows x64 `.tar.gz` from [GitHub Releases](https://github.com/Delthin/moon-license-scan/releases/tag/v1.0.1). Verify it against `SHA256SUMS` on the same page, extract it, then add `bin/` to `PATH` or invoke the executable directly.
 
 ```sh
 # macOS / Linux
@@ -26,7 +26,7 @@ Download the macOS ARM64, Linux x64, or Windows x64 `.tar.gz` from [GitHub Relea
 .\bin\moon-license-scan.exe --version
 ```
 
-To build from source, install [MoonBit](https://www.moonbitlang.com/download/) and a platform C toolchain. CI uses MoonBit `0.10.21+06da1ed44`. From the repository root, run:
+To build from source, install [MoonBit](https://www.moonbitlang.com/download/) and a platform C toolchain. CI uses MoonBit `1.0.0-rc1+3c0520448`. From the repository root, run:
 
 ```sh
 moon update
@@ -69,11 +69,11 @@ moon-license-scan preview examples/release-after after.json EVIDENCE_ID
 
 ## MoonBit SDK
 
-Add the [Mooncakes SDK 0.1.0](https://mooncakes.io/docs/Delthin/moon_license_scan@0.1.0) dependency to `moon.mod`, import the scanner in your package’s `moon.pkg`, then run `moon update` from the project root. Replace `path/to/release` with the directory you want to scan. If the entry package is at the root, use `moon run --target native .`; replace `.` with `src` if the entry package is there. The CLI release (`v1.0.0`) and the Mooncakes SDK (`0.1.0`) have separate release versions.
+Add the [Mooncakes SDK 0.1.1](https://mooncakes.io/docs/Delthin/moon_license_scan@0.1.1) dependency to `moon.mod`, import the scanner in your package’s `moon.pkg`, then run `moon update` from the project root. Replace `path/to/release` with the directory you want to scan. If the entry package is at the root, use `moon run --target native .`; replace `.` with `src` if the entry package is there. The CLI release (`v1.0.1`) and the Mooncakes SDK (`0.1.1`) have separate release versions.
 
 ```moonbit
 // moon.mod
-import { "Delthin/moon_license_scan@0.1.0" }
+import { "Delthin/moon_license_scan@0.1.1" }
 ```
 
 ```moonbit
@@ -95,7 +95,7 @@ fn main {
 }
 ```
 
-Reuse a `Scanner` across scans, or use `Session::open` to hold the authorized directory and current report for previews, comparisons, and notice exports. Call `close` when done. See the [public API](src/pkg.generated.mbti). To use the local source archive, extract `Delthin-moon_license_scan-1.0.0.zip` from the GitHub Release and declare dependency version `1.0.0`. From the common parent, run `moon work init my-app moon-license-sdk`, substituting the consumer and extracted directory names.
+Reuse a `Scanner` across scans, or use `Session::open` to hold the authorized directory and current report for previews, comparisons, and notice exports. Call `close` when done. See the [public API](src/pkg.generated.mbti). To use the local source archive, extract `Delthin-moon_license_scan-1.0.1.zip` from the GitHub Release and declare dependency version `1.0.1`. From the common parent, run `moon work init my-app moon-license-sdk`, substituting the consumer and extracted directory names.
 
 ## MCP server
 

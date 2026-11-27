@@ -1,5 +1,6 @@
 import {
   "moonbitlang/core/json",
+  "Delthin/moon_license_scan/internal/bounded_json",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/encoding/utf16",
   "moonbitlang/x/crypto",

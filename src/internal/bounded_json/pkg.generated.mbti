@@ -1,0 +1,17 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Delthin/moon_license_scan/internal/bounded_json"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn parse(StringView, Int32) -> @json.Json raise
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

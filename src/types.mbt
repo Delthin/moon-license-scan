@@ -1,6 +1,6 @@
 ///|
 /// Installed version of the scanner and its entry points.
-pub const VERSION : String = "1.0.0"
+pub const VERSION : String = "1.0.1"
 
 ///|
 /// Bounds and explicit exclusion prefixes for a filesystem scan. Prefixes use
